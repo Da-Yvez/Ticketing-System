@@ -17,6 +17,7 @@ import {
   Inbox
 } from 'lucide-react';
 import logo from './assets/logo.jpg';
+import StackedBarPulse from './components/ui/stacked-bar-pulse';
 import './App.css';
 
 const SOCKET_URL = 'http://localhost:4000';
@@ -85,6 +86,16 @@ function App() {
   ];
 
   const displayHistory = history.length > 0 ? history : sampleHistory;
+
+  if (!isConnected) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100vw', height: '100vh', backgroundColor: '#0a0e1a', color: '#fff', fontFamily: 'var(--font-family)' }}>
+        <StackedBarPulse />
+        <h2 style={{ marginTop: '24px', fontSize: '1.2rem', fontWeight: '600' }}>Backend is Offline</h2>
+        <p style={{ marginTop: '8px', fontSize: '0.9rem', color: '#94a3b8', textAlign: 'center' }}>Waiting for the Core API to start...<br/>Please start the backend via the AhasaTV Launcher.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="layout-root">
