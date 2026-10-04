@@ -278,6 +278,33 @@ app.delete('/api/devices/:id', async (req, res) => {
   }
 });
 
+app.patch('/api/devices/:id', async (req, res) => {
+  const { pcNumber, ipAddress, assignedUser, department } = req.body;
+
+  try {
+    const updateData = {};
+    if (pcNumber) updateData.pc_number = pcNumber.trim();
+    if (ipAddress) updateData.ip_address = ipAddress.trim();
+    if (assignedUser !== undefined) updateData.assigned_user = assignedUser ? assignedUser.trim() : null;
+    if (department !== undefined) updateData.department = department ? department.trim() : null;
+
+    const { data, error } = await supabase
+      .from('devices')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ success: true, device: data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend server running on port ${PORT}`);

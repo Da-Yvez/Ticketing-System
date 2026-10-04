@@ -5,14 +5,17 @@
   <title>IT Support</title>
   <link rel="stylesheet" href="style.css">
   <!-- Content Security Policy to allow inline styles and local scripts -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:4000;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http: https: ws: wss:;">
 </head>
 <body>
   <div id="app">
     <div id="main-view">
       <div class="header">
         <h2>IT Support</h2>
-        <button id="settings-btn" class="icon-btn">⚙️</button>
+        <div>
+          <button id="minimize-btn" class="icon-btn">➖</button>
+          <button id="settings-btn" class="icon-btn">⚙️</button>
+        </div>
       </div>
       
       <div class="status-box">
@@ -40,7 +43,10 @@
         <label>Server IP</label>
         <input type="text" id="server-ip" placeholder="http://192.168.1.100:4000">
       </div>
-      <button id="save-btn" class="main-btn">Save</button>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button id="save-btn" class="main-btn" style="flex: 1;">Save</button>
+        <button id="quit-btn" class="main-btn" style="flex: 1; background-color: #ef4444;">Exit App</button>
+      </div>
     </div>
   </div>
 

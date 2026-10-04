@@ -72,6 +72,18 @@ function startServer(port = 4000) {
     });
   });
 
+  expressApp.patch('/api/devices/:id', (req, res) => {
+    const { pcNumber, ipAddress, username } = req.body;
+    db.run(
+      'UPDATE devices SET pcNumber = ?, ipAddress = ?, username = ? WHERE id = ?',
+      [pcNumber, ipAddress, username, req.params.id],
+      function(err) {
+        if (err) return res.status(500).json({ error: 'Database update failed' });
+        res.json({ success: true });
+      }
+    );
+  });
+
   expressApp.get('/api/requests', (req, res) => {
     db.all(`
       SELECT r.id, r.status, r.timestamp, d.pcNumber, d.username, d.ipAddress 

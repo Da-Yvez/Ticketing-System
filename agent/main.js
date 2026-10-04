@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, ipcMain, nativeImage, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -22,12 +22,22 @@ function getLocalIpAddress() {
 }
 
 function createTray() {
-  const icon = nativeImage.createEmpty();
+  const iconPath = path.join(__dirname, 'icon.png');
+  const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon);
   tray.setToolTip('IT Support Request');
 
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Open IT Support', click: () => { window.show(); window.focus(); } },
+    { label: 'Quit', click: () => { app.quit(); } }
+  ]);
+
   tray.on('click', (event, bounds) => {
     toggleWindow(bounds);
+  });
+  
+  tray.on('right-click', () => {
+    tray.popUpContextMenu(contextMenu);
   });
 }
 
@@ -63,6 +73,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   if (!fs.existsSync(path.join(__dirname, 'icon.png'))) {
+    // We already have icon.png downloaded, fallback if missing
     fs.writeFileSync(path.join(__dirname, 'icon.png'), ''); 
   }
   createTray();
@@ -76,11 +87,20 @@ ipcMain.handle('get-config', () => {
       savedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     } catch (e) {}
   }
+  
+  let defaultServerIp = 'http://localhost:4000';
+  const defaultConfigFile = path.join(__dirname, 'default-config.json');
+  if (!savedConfig.serverIp && fs.existsSync(defaultConfigFile)) {
+    try {
+      const defaultConf = JSON.parse(fs.readFileSync(defaultConfigFile, 'utf8'));
+      if (defaultConf.serverIp) defaultServerIp = defaultConf.serverIp;
+    } catch (e) {}
+  }
 
   return {
     pcNumber: savedConfig.pcNumber || os.hostname(),
     username: savedConfig.username || os.userInfo().username,
-    serverIp: savedConfig.serverIp || 'http://localhost:4000',
+    serverIp: savedConfig.serverIp || defaultServerIp,
     localIp: getLocalIpAddress()
   };
 });
@@ -88,4 +108,12 @@ ipcMain.handle('get-config', () => {
 ipcMain.handle('save-config', (event, config) => {
   fs.writeFileSync(configPath, JSON.stringify(config));
   return true;
+});
+
+ipcMain.on('quit-app', () => {
+  app.quit();
+});
+
+ipcMain.on('hide-window', () => {
+  if (window) window.hide();
 });

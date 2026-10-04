@@ -17,11 +17,14 @@
   --dead-red: #ef4444;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-body, html {
+body,
+html {
   margin: 0;
   padding: 0;
   width: 100vw;

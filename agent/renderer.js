@@ -22,16 +22,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     mainView.classList.remove('hidden');
   });
 
+  document.getElementById('minimize-btn').addEventListener('click', () => {
+    ipcRenderer.send('hide-window');
+  });
+
+  function formatServerIp(ip) {
+    let formatted = ip.trim();
+    if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+      formatted = 'http://' + formatted;
+    }
+    if (formatted.split(':').length === 2) {
+      formatted += ':4000';
+    }
+    return formatted;
+  }
+
   document.getElementById('save-btn').addEventListener('click', async () => {
+    const formattedIp = formatServerIp(document.getElementById('server-ip').value);
+    document.getElementById('server-ip').value = formattedIp;
+    
     config = {
       ...config,
       pcNumber: document.getElementById('pc-number').value,
       username: document.getElementById('username').value,
-      serverIp: document.getElementById('server-ip').value
+      serverIp: formattedIp
     };
     await ipcRenderer.invoke('save-config', config);
     settingsView.classList.add('hidden');
     mainView.classList.remove('hidden');
+  });
+
+  document.getElementById('quit-btn').addEventListener('click', () => {
+    ipcRenderer.send('quit-app');
   });
 
   requestBtn.addEventListener('click', async () => {
@@ -41,7 +63,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusText.textContent = 'Connecting to IT support service...';
 
     try {
-      const response = await axios.post(`${config.serverIp}/api/request-help`, {
+      const baseUrl = formatServerIp(config.serverIp);
+      const response = await axios.post(`${baseUrl}/api/request-help`, {
         pcNumber: config.pcNumber,
         username: config.username,
         ipAddress: config.localIp || '127.0.0.1'
