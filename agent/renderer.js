@@ -67,13 +67,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       const response = await axios.post(`${baseUrl}/api/request-help`, {
         pcNumber: config.pcNumber,
         username: config.username,
-        ipAddress: config.localIp || '127.0.0.1'
+        ipAddress: config.localIp || '127.0.0.1',
+        message: document.getElementById('request-message').value
       });
 
       requestBtn.textContent = 'Request Sent!';
       requestBtn.style.backgroundColor = '#10b981';
       statusText.style.color = '#10b981';
       statusText.textContent = 'IT has been notified. Awaiting technician.';
+      document.getElementById('request-message').value = '';
 
       setTimeout(() => {
         requestBtn.disabled = false;

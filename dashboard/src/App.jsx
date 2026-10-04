@@ -253,10 +253,11 @@ function App() {
 
   if (!isConnected) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100vw', height: '100vh', backgroundColor: '#0a0e1a', color: '#fff', fontFamily: 'var(--font-family)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100vw', height: '100vh', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)', fontFamily: 'var(--font-family)' }}>
+        <img src={logo} alt="AhasaTV" style={{ width: '120px', borderRadius: '20px', marginBottom: '2rem', boxShadow: '0 8px 32px rgba(14, 165, 233, 0.2)' }} />
         <StackedBarPulse />
-        <h2 style={{ marginTop: '24px', fontSize: '1.2rem', fontWeight: '600' }}>Backend is Offline</h2>
-        <p style={{ marginTop: '8px', fontSize: '0.9rem', color: '#94a3b8', textAlign: 'center' }}>Waiting for the Core API to start...<br />Please start the backend via the AhasaTV Launcher.</p>
+        <h2 style={{ marginTop: '24px', fontSize: '1.5rem', fontWeight: '700', color: 'var(--brand-blue)' }}>Backend is Offline</h2>
+        <p style={{ marginTop: '12px', fontSize: '1rem', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: '1.5' }}>Waiting for the Core API to start...<br />Please start the backend via the AhasaTV Launcher.</p>
       </div>
     );
   }
@@ -360,38 +361,7 @@ function App() {
                 <p className="main-subtitle">Real-time incoming support tickets from authorized network PCs.</p>
               </header>
 
-              <div className="stats-row">
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span className="stat-label">Active Queue</span>
-                    <Clock size={16} className="stat-icon" />
-                  </div>
-                  <div className="stat-value">{requests.length}</div>
-                  <div className="stat-desc">
-                    {requests.length === 0 ? 'All workstations operating smoothly' : 'Requires technician attention'}
-                  </div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span className="stat-label">Authorized Workstations</span>
-                    <Monitor size={16} className="stat-icon" />
-                  </div>
-                  <div className="stat-value">{devices.length}</div>
-                  <div className="stat-desc">Pre-registered inventory endpoints</div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span className="stat-label">Resolved Tickets</span>
-                    <CheckCircle2 size={16} className="stat-icon" />
-                  </div>
-                  <div className="stat-value">{resolvedTickets.length}</div>
-                  <div className="stat-desc">Logged in Cloud database</div>
-                </div>
-              </div>
-
-              <div className="board-panel">
+              <div className={`board-panel ${requests.length > 0 ? 'emergency-board' : ''}`}>
                 <AnimatePresence>
                   {requests.length === 0 ? (
                     <motion.div
@@ -438,11 +408,23 @@ function App() {
                               <span className="flow-val">{req.username}</span>
                             </div>
                             <div className="flow-data-point">
+                              <Building size={14} />
+                              <span className="flow-key">Dept</span>
+                              <span className="flow-val">{req.department}</span>
+                            </div>
+                            <div className="flow-data-point">
                               <Server size={14} />
                               <span className="flow-key">IP</span>
                               <span className="flow-val">{req.ipAddress || '127.0.0.1'}</span>
                             </div>
                           </div>
+
+                          {req.message && (
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem', fontSize: '0.92rem', color: '#1e293b' }}>
+                              <strong style={{ display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.3rem' }}>User Message</strong>
+                              {req.message}
+                            </div>
+                          )}
 
                           <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
                             <button

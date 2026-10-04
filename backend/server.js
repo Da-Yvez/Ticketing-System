@@ -24,7 +24,7 @@ io.on('connection', (socket) => {
 });
 
 app.post('/api/request-help', async (req, res) => {
-  const { pcNumber, ipAddress, username } = req.body;
+  const { pcNumber, ipAddress, username, message } = req.body;
 
   if (!pcNumber) {
     return res.status(400).json({ error: 'Device PC name is required' });
@@ -33,7 +33,7 @@ app.post('/api/request-help', async (req, res) => {
   try {
     const { data: device, error: devErr } = await supabase
       .from('devices')
-      .select('id, pc_number, ip_address, assigned_user')
+      .select('id, pc_number, ip_address, assigned_user, department')
       .eq('pc_number', pcNumber.trim())
       .maybeSingle();
 
@@ -79,9 +79,10 @@ app.post('/api/request-help', async (req, res) => {
       .from('requests')
       .insert([{
         device_id: device.id,
-        status: 'pending'
+        status: 'pending',
+        message: message ? message.trim() : null
       }])
-      .select('id, status, created_at')
+      .select('id, status, created_at, message')
       .single();
 
     if (insertErr) {
@@ -94,8 +95,10 @@ app.post('/api/request-help', async (req, res) => {
       deviceId: device.id,
       pcNumber: device.pc_number,
       username: username || device.assigned_user || 'Unknown User',
+      department: device.department || 'Unknown',
       ipAddress: device.ip_address,
       status: newTicket.status,
+      message: newTicket.message,
       timestamp: newTicket.created_at
     };
 
@@ -123,11 +126,13 @@ app.get('/api/requests', async (req, res) => {
         status,
         created_at,
         resolved_at,
+        message,
         devices (
           id,
           pc_number,
           ip_address,
-          assigned_user
+          assigned_user,
+          department
         )
       `)
       .order('created_at', { ascending: false });
@@ -151,6 +156,8 @@ app.get('/api/requests', async (req, res) => {
       deviceId: row.devices?.id,
       pcNumber: row.devices?.pc_number || 'Unknown PC',
       username: row.devices?.assigned_user || 'Unknown User',
+      department: row.devices?.department || 'Unknown',
+      message: row.message,
       ipAddress: row.devices?.ip_address || '127.0.0.1'
     }));
 

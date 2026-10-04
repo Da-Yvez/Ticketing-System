@@ -11,7 +11,10 @@
   <div id="app">
     <div id="main-view">
       <div class="header">
-        <h2>IT Support</h2>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="icon.png" alt="Logo" style="width: 28px; height: 28px; border-radius: 6px;">
+          <h2>AhasaTV Support</h2>
+        </div>
         <div>
           <button id="minimize-btn" class="icon-btn">➖</button>
           <button id="settings-btn" class="icon-btn">⚙️</button>
@@ -21,6 +24,10 @@
       <div class="status-box">
         <div id="status-icon" class="idle">Ready</div>
         <p id="status-text">Click below to request help from IT.</p>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 15px;">
+        <textarea id="request-message" placeholder="Optional: What do you need help with?" rows="2" style="resize: none;"></textarea>
       </div>
 
       <button id="request-btn" class="main-btn">Request Help</button>

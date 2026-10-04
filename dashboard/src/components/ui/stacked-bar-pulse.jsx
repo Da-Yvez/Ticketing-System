@@ -9,7 +9,7 @@ export const StackedBarPulse = () => (
         style={{
           width: '100%',
           height: '4px',
-          backgroundColor: '#fff', // White color since our overlay will be dark
+          backgroundColor: 'var(--brand-blue, #0ea5e9)',
           borderRadius: '9999px'
         }}
         animate={{ opacity: [0.2, 1, 0.2], width: ["50%", "100%", "50%"] }}
