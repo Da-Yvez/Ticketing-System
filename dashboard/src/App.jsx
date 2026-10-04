@@ -76,6 +76,11 @@ function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
 
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastType, setBroadcastType] = useState('all');
+  const [broadcastTarget, setBroadcastTarget] = useState('');
+  const [broadcastStatus, setBroadcastStatus] = useState('');
+
   useEffect(() => {
     const socket = io(SOCKET_URL);
 
@@ -238,6 +243,31 @@ function App() {
         fetchDevices();
       }
     } catch (error) { }
+  };
+
+  const handleBroadcast = async () => {
+    if (!broadcastMessage.trim()) return;
+    try {
+      setBroadcastStatus('Sending...');
+      const response = await fetch(`${SOCKET_URL}/api/broadcast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: broadcastMessage,
+          targetType: broadcastType,
+          targetValue: broadcastType === 'all' ? null : [broadcastTarget]
+        })
+      });
+      if (response.ok) {
+        setBroadcastStatus('Broadcast sent successfully!');
+        setBroadcastMessage('');
+        setTimeout(() => setBroadcastStatus(''), 3000);
+      } else {
+        setBroadcastStatus('Failed to send broadcast.');
+      }
+    } catch (e) {
+      setBroadcastStatus('Error sending broadcast.');
+    }
   };
 
   const filteredDevices = devices.filter(d => {
@@ -894,10 +924,66 @@ function App() {
                 <h1 className="main-title">Network Announcements</h1>
                 <p className="main-subtitle">Push urgent messages and scheduled maintenance alerts to agent PCs.</p>
               </header>
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '14px', padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <MessageSquare size={36} style={{ margin: '0 auto 14px auto', color: 'var(--text-tertiary)' }} />
-                <h3 style={{ color: '#f8fafc', margin: '0 0 6px 0', fontSize: '1.1rem' }}>Broadcast Channel Ready</h3>
-                <p style={{ margin: 0, fontSize: '0.85rem' }}>Send instant notifications to all active workstations or select specific departments.</p>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '14px', padding: '32px', color: 'var(--text-secondary)' }}>
+                <h3 style={{ color: '#f8fafc', margin: '0 0 20px 0', fontSize: '1.2rem' }}>Send Broadcast Message</h3>
+                
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)' }}>Target Type:</label>
+                  <select 
+                    className="filter-select"
+                    value={broadcastType} 
+                    onChange={e => setBroadcastType(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'var(--bg-main)', border: '1px solid var(--border-light)', color: 'white' }}
+                  >
+                    <option value="all">All Connected PCs</option>
+                    <option value="department">By Department</option>
+                    <option value="pc">By PC Number</option>
+                    <option value="ip">By IP Address</option>
+                  </select>
+                </div>
+
+                {broadcastType !== 'all' && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)' }}>Target Value:</label>
+                    <input 
+                      type="text" 
+                      value={broadcastTarget}
+                      onChange={e => setBroadcastTarget(e.target.value)}
+                      placeholder={
+                        broadcastType === 'department' ? 'e.g. Sales' : 
+                        broadcastType === 'pc' ? 'e.g. PC-001' : 'e.g. 192.168.1.5'
+                      }
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', background: 'var(--bg-main)', border: '1px solid var(--border-light)', color: 'white' }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-primary)' }}>Message:</label>
+                  <textarea 
+                    value={broadcastMessage}
+                    onChange={e => setBroadcastMessage(e.target.value)}
+                    placeholder="Type your alert message here..."
+                    style={{ width: '100%', height: '120px', padding: '10px', borderRadius: '8px', background: 'var(--bg-main)', border: '1px solid var(--border-light)', color: 'white', resize: 'vertical' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ color: broadcastStatus.includes('success') ? '#10b981' : (broadcastStatus.includes('Error') || broadcastStatus.includes('Failed') ? '#ef4444' : 'var(--text-secondary)') }}>
+                    {broadcastStatus}
+                  </span>
+                  <button 
+                    onClick={handleBroadcast}
+                    disabled={!broadcastMessage.trim() || (broadcastType !== 'all' && !broadcastTarget.trim()) || broadcastStatus === 'Sending...'}
+                    style={{ 
+                      background: 'var(--primary)', color: 'white', border: 'none', padding: '10px 24px', 
+                      borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
+                      opacity: (!broadcastMessage.trim() || (broadcastType !== 'all' && !broadcastTarget.trim()) || broadcastStatus === 'Sending...') ? 0.6 : 1
+                    }}
+                  >
+                    {broadcastStatus === 'Sending...' ? 'Sending...' : 'Send Broadcast'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

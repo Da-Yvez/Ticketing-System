@@ -7,6 +7,8 @@ import threading
 import requests
 from PIL import Image
 import pystray
+import socketio
+import time
 from pystray import MenuItem as item
 from tkinter import simpledialog
 
@@ -72,6 +74,7 @@ class ITSupportApp(ctk.CTk):
             Image.new("RGBA", (64, 64), (0, 0, 0, 0)).save(self.icon_path)
             
         self.setup_tray()
+        self.start_socketio()
         
     def load_config(self):
         self.config = {}
@@ -151,7 +154,64 @@ class ITSupportApp(ctk.CTk):
     def quit_app(self):
         if self.tray_icon:
             self.tray_icon.stop()
+        if hasattr(self, 'sio') and self.sio.connected:
+            self.sio.disconnect()
         self.destroy()
+
+    def start_socketio(self):
+        self.sio = socketio.Client(reconnection=True, reconnection_delay=1, reconnection_delay_max=5)
+        
+        @self.sio.event
+        def connect():
+            self.sio.emit('register', {
+                'pcNumber': self.config_data['pcNumber'],
+                'ipAddress': self.config_data['localIp']
+            })
+            
+        @self.sio.event
+        def broadcast_message(data):
+            msg = data.get("message", "")
+            if msg:
+                self.after(0, lambda: self.show_broadcast(msg))
+
+        def run_sio():
+            server_url = self.config_data['serverIp']
+            while True:
+                try:
+                    if not self.sio.connected:
+                        self.sio.connect(server_url)
+                        self.sio.wait()
+                except Exception:
+                    time.sleep(5)
+                time.sleep(1)
+                
+        threading.Thread(target=run_sio, daemon=True).start()
+
+    def show_broadcast(self, msg):
+        win = ctk.CTkToplevel(self)
+        win.title("IT Alert")
+        win.geometry("450x300")
+        win.attributes("-topmost", True)
+        
+        win.update_idletasks()
+        screen_width = win.winfo_screenwidth()
+        screen_height = win.winfo_screenheight()
+        x = int((screen_width / 2) - (450 / 2))
+        y = int((screen_height / 2) - (300 / 2))
+        win.geometry(f"+{x}+{y}")
+        
+        win.bell()
+        
+        lbl_title = ctk.CTkLabel(win, text="Message received from AhasaTV IT System", font=ctk.CTkFont(size=16, weight="bold"), text_color="#38bdf8")
+        lbl_title.pack(pady=(20, 10))
+        
+        txt = ctk.CTkTextbox(win, height=150, wrap="word", font=ctk.CTkFont(size=14))
+        txt.pack(fill="both", expand=True, padx=20, pady=10)
+        txt.insert("1.0", msg)
+        txt.configure(state="disabled")
+        
+        btn = ctk.CTkButton(win, text="Dismiss", height=40, font=ctk.CTkFont(weight="bold"), command=win.destroy)
+        btn.pack(pady=(0, 20))
 
 class MainView(ctk.CTkFrame):
     def __init__(self, master):

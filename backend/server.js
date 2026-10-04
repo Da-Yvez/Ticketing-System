@@ -18,6 +18,13 @@ const io = new Server(server, {
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+  
+  socket.on('register', (data) => {
+    socket.pcNumber = data?.pcNumber;
+    socket.ipAddress = data?.ipAddress;
+    console.log(`Client registered: ${data?.pcNumber} at ${data?.ipAddress}`);
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
@@ -309,6 +316,47 @@ app.patch('/api/devices/:id', async (req, res) => {
     return res.json({ success: true, device: data });
   } catch (err) {
     return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/broadcast', async (req, res) => {
+  const { message, targetType, targetValue } = req.body;
+  
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  try {
+    if (targetType === 'all') {
+      io.emit('broadcast_message', { message });
+    } else {
+      let targetPCNumbers = [];
+      let targetDeviceIPs = [];
+
+      if (targetType === 'department') {
+        const { data: devices } = await supabase.from('devices').select('pc_number').in('department', Array.isArray(targetValue) ? targetValue : [targetValue]);
+        if (devices) targetPCNumbers = devices.map(d => d.pc_number);
+      } else if (targetType === 'pc') {
+        targetPCNumbers = Array.isArray(targetValue) ? targetValue : [targetValue];
+      } else if (targetType === 'ip') {
+        targetDeviceIPs = Array.isArray(targetValue) ? targetValue : [targetValue];
+      }
+
+      const sockets = await io.fetchSockets();
+      sockets.forEach(socket => {
+        if (
+          (socket.pcNumber && targetPCNumbers.includes(socket.pcNumber)) ||
+          (socket.ipAddress && targetDeviceIPs.includes(socket.ipAddress))
+        ) {
+          socket.emit('broadcast_message', { message });
+        }
+      });
+    }
+
+    return res.json({ success: true, message: 'Broadcast sent' });
+  } catch (err) {
+    console.error('Broadcast error:', err);
+    return res.status(500).json({ error: 'Failed to send broadcast' });
   }
 });
 
