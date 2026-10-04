@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AhasaTV IT Support System Backend</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: #f8fafc;
+      color: #0f172a;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+    }
+
+    .header-card {
+      background: #ffffff;
+      padding: 1.25rem;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+
+    .logo-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+      box-shadow: 0 2px 6px rgba(0, 71, 255, 0.15);
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-sub {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #0052ff;
+    }
+
+    .main-body {
+      flex: 1;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow: hidden;
+    }
+
+    .status-panel {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .status-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .status-tag.active {
+      background: rgba(16, 185, 129, 0.12);
+      color: #059669;
+    }
+
+    .status-tag.inactive {
+      background: rgba(239, 68, 68, 0.12);
+      color: #dc2626;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .status-tag.active .status-dot {
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+    }
+
+    .status-tag.inactive .status-dot {
+      background: #ef4444;
+      box-shadow: 0 0 6px #ef4444;
+    }
+
+    .ip-info-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      background: #f8fafc;
+      padding: 0.65rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .ip-label {
+      color: #64748b;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .ip-value {
+      font-weight: 700;
+      color: #0f172a;
+      font-family: ui-monospace, Consolas, monospace;
+    }
+
+    .action-button {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.15s ease;
+    }
+
+    .action-button.start {
+      background: #0052ff;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 82, 255, 0.25);
+    }
+
+    .action-button.start:hover {
+      background: #0043d4;
+    }
+
+    .action-button.stop {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .action-button.stop:hover {
+      background: #fecaca;
+    }
+
+    .logs-panel {
+      flex: 1;
+      background: #0f172a;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .logs-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+
+    .logs-stream {
+      flex: 1;
+      overflow-y: auto;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .logs-stream::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .logs-stream::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .log-time {
+      color: #475569;
+      flex-shrink: 0;
+    }
+
+    .log-msg {
+      color: #e2e8f0;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-card">
+    <img src="logo.jpg" alt="Logo" class="logo-img">
+    <div class="title-group">
+      <span class="brand-title">AhasaTV Backend Service</span>
+      <span class="brand-sub">IT Support System</span>
+    </div>
+  </div>
+
+  <div class="main-body">
+    <div class="status-panel">
+      <div class="status-header-row">
+        <span style="font-size: 0.85rem; font-weight: 600; color: #475569;">Service Status</span>
+        <div id="status-badge" class="status-tag active">
+          <span class="status-dot"></span>
+          <span id="status-text">Running</span>
+        </div>
+      </div>
+
+      <div class="ip-info-box">
+        <span class="ip-label">Service URL</span>
+        <span id="service-url" class="ip-value">http://127.0.0.1:4000</span>
+      </div>
+
+      <button id="toggle-btn" class="action-button stop">
+        Stop Service
+      </button>
+    </div>
+
+    <div class="logs-panel">
+      <span class="logs-title">Live Service Logs</span>
+      <div id="logs-container" class="logs-stream"></div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    const serviceUrl = document.getElementById('service-url');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const logsContainer = document.getElementById('logs-container');
+
+    toggleBtn.addEventListener('click', () => {
+      ipcRenderer.send('toggle-server');
+    });
+
+    ipcRenderer.on('server-status', (event, status) => {
+      if (status.running) {
+        statusBadge.className = 'status-tag active';
+        statusText.textContent = 'Running';
+        serviceUrl.textContent = `http://${status.ip}:${status.port}`;
+        toggleBtn.className = 'action-button stop';
+        toggleBtn.textContent = 'Stop Service';
+      } else {
+        statusBadge.className = 'status-tag inactive';
+        statusText.textContent = 'Stopped';
+        serviceUrl.textContent = 'Offline';
+        toggleBtn.className = 'action-button start';
+        toggleBtn.textContent = 'Start Service';
+      }
+    });
+
+    ipcRenderer.on('log-message', (event, log) => {
+      const line = document.createElement('div');
+      line.className = 'log-line';
+
+      const time = document.createElement('span');
+      time.className = 'log-time';
+      time.textContent = log.timestamp;
+
+      const msg = document.createElement('span');
+      msg.className = 'log-msg';
+      msg.textContent = log.text;
+
+      line.appendChild(time);
+      line.appendChild(msg);
+      logsContainer.appendChild(line);
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    });
+  </script>
+</body>
+</html>

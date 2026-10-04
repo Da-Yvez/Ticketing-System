@@ -7,14 +7,14 @@ import {
   MessageSquare, 
   Clock, 
   CheckCircle2, 
-  ChevronRight, 
   ArrowRight,
   Server,
   User,
   History,
   Check,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Inbox
 } from 'lucide-react';
 import logo from './assets/logo.jpg';
 import './App.css';
@@ -66,8 +66,7 @@ function App() {
           issue: `Help Request: ${resolvedItem.pcNumber}`,
           user: resolvedItem.username,
           time: 'Just now',
-          status: 'Resolved',
-          color: '#10b981'
+          status: 'Resolved'
         },
         ...prev
       ]);
@@ -76,13 +75,13 @@ function App() {
   };
 
   const sampleHistory = [
-    { id: '#TKT-0042', issue: 'Network Issue', status: 'Resolved', time: '2 days ago', color: '#10b981' },
-    { id: '#TKT-0041', issue: 'Laptop Setup', status: 'Closed', time: '4 days ago', color: '#3b82f6' },
-    { id: '#TKT-0040', issue: 'Access Request', status: 'Resolved', time: '1 week ago', color: '#8b5cf6' },
-    { id: '#TKT-0039', issue: 'Printer Not Working', status: 'Resolved', time: '1 week ago', color: '#10b981' },
-    { id: '#TKT-0038', issue: 'Software Installation', status: 'Closed', time: '2 weeks ago', color: '#64748b' },
-    { id: '#TKT-0037', issue: 'Email Configuration', status: 'Resolved', time: '2 weeks ago', color: '#8b5cf6' },
-    { id: '#TKT-0036', issue: 'Hardware Replacement', status: 'Closed', time: '3 weeks ago', color: '#64748b' }
+    { id: '#TKT-0042', issue: 'Network Issue', status: 'Resolved', time: '2 days ago' },
+    { id: '#TKT-0041', issue: 'Laptop Setup', status: 'Closed', time: '4 days ago' },
+    { id: '#TKT-0040', issue: 'Access Request', status: 'Resolved', time: '1 week ago' },
+    { id: '#TKT-0039', issue: 'Printer Not Working', status: 'Resolved', time: '1 week ago' },
+    { id: '#TKT-0038', issue: 'Software Installation', status: 'Closed', time: '2 weeks ago' },
+    { id: '#TKT-0037', issue: 'Email Configuration', status: 'Resolved', time: '2 weeks ago' },
+    { id: '#TKT-0036', issue: 'Hardware Replacement', status: 'Closed', time: '3 weeks ago' }
   ];
 
   const displayHistory = history.length > 0 ? history : sampleHistory;
@@ -94,56 +93,56 @@ function App() {
           <motion.aside 
             className="left-sidebar"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 250, opacity: 1 }}
+            animate={{ width: 260, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <div className="sidebar-inner-content">
-              <div className="sidebar-brand-block">
-                <div className="brand-logo-wrap">
-                  <img src={logo} alt="AhasaTV" className="brand-img" />
-                </div>
-                <div className="brand-text-col">
-                  <span className="brand-main-title">AhasaTV</span>
-                  <span className="brand-sub-title">IT Support System</span>
+            <div className="sidebar-container">
+              <div className="sidebar-brand-row">
+                <div className="brand-group">
+                  <img src={logo} alt="AhasaTV" className="brand-avatar" />
+                  <div className="brand-meta">
+                    <span className="brand-name">AhasaTV</span>
+                    <span className="brand-role">IT Support System</span>
+                  </div>
                 </div>
                 <button 
-                  className="sidebar-toggle-btn"
+                  className="sidebar-collapse-btn"
                   onClick={() => setIsSidebarOpen(false)}
-                  title="Hide Sidebar"
+                  title="Hide sidebar"
                 >
-                  <PanelLeftClose size={18} />
+                  <PanelLeftClose size={16} />
                 </button>
               </div>
 
-              <nav className="sidebar-nav-list">
+              <nav className="sidebar-nav">
                 <button 
-                  className={`nav-button ${activeTab === 'tickets' ? 'active' : ''}`}
+                  className={`nav-tab ${activeTab === 'tickets' ? 'active' : ''}`}
                   onClick={() => setActiveTab('tickets')}
                 >
-                  <Ticket size={18} />
+                  <Ticket size={16} />
                   <span>Tickets</span>
                 </button>
                 <button 
-                  className={`nav-button ${activeTab === 'devices' ? 'active' : ''}`}
+                  className={`nav-tab ${activeTab === 'devices' ? 'active' : ''}`}
                   onClick={() => setActiveTab('devices')}
                 >
-                  <Monitor size={18} />
+                  <Monitor size={16} />
                   <span>Devices</span>
                 </button>
                 <button 
-                  className={`nav-button ${activeTab === 'messages' ? 'active' : ''}`}
+                  className={`nav-tab ${activeTab === 'messages' ? 'active' : ''}`}
                   onClick={() => setActiveTab('messages')}
                 >
-                  <MessageSquare size={18} />
+                  <MessageSquare size={16} />
                   <span>Messages</span>
                 </button>
               </nav>
 
-              <div className="sidebar-footer">
-                <div className={`status-pill ${isConnected ? 'online' : 'offline'}`}>
+              <div className="sidebar-bottom">
+                <div className={`status-pill ${isConnected ? 'live' : 'dead'}`}>
                   <span className="status-dot"></span>
-                  <span>{isConnected ? 'Backend Connected' : 'Server Offline'}</span>
+                  <span>{isConnected ? 'Server Online' : 'Server Offline'}</span>
                 </div>
               </div>
             </div>
@@ -152,178 +151,154 @@ function App() {
       </AnimatePresence>
 
       {!isSidebarOpen && (
-        <div className="collapsed-bar-trigger">
+        <div className="mini-rail">
           <button 
-            className="open-sidebar-btn"
+            className="mini-rail-btn"
             onClick={() => setIsSidebarOpen(true)}
-            title="Open Sidebar"
+            title="Expand sidebar"
           >
-            <PanelLeftOpen size={18} />
+            <PanelLeftOpen size={16} />
           </button>
           
           <div 
-            className={`collapsed-status-pill ${isConnected ? 'online' : 'offline'}`}
-            title={isConnected ? 'Backend Connected' : 'Server Offline'}
-          >
-            <span className="status-dot"></span>
-            <span className="collapsed-status-text">
-              {isConnected ? 'Online' : 'Offline'}
-            </span>
-          </div>
+            className={`mini-status-dot ${isConnected ? 'live' : 'dead'}`}
+            title={isConnected ? 'Server Online' : 'Server Offline'}
+          />
         </div>
       )}
 
-      <main className="center-workspace">
-        <header className="page-header">
-          <div className="page-title-box">
-            <h1>Tickets</h1>
-            <p>View and manage your support tickets.</p>
-          </div>
-        </header>
+      <main className="content-stage">
+        <div className="stage-inner">
+          <header className="title-area">
+            <h1 className="main-title">Tickets</h1>
+            <p className="main-subtitle">View and manage your support tickets.</p>
+          </header>
 
-        <div className="metric-cards-row">
-          <div className="metric-card">
-            <div className="metric-icon-wrap blue-bg">
-              <Ticket size={20} color="#2563eb" />
-            </div>
-            <div className="metric-info">
-              <div className="metric-label-row">
-                <span className="metric-label">Total Tickets</span>
-                <ChevronRight size={14} className="metric-arrow" />
+          <div className="stats-row">
+            <div className="stat-card">
+              <div className="stat-card-header">
+                <span className="stat-label">Total Tickets</span>
+                <Ticket size={16} className="stat-icon" />
               </div>
-              <span className="metric-val">{requests.length + history.length}</span>
-              <span className="metric-subtext">
-                {requests.length + history.length === 0 ? 'No tickets yet' : `${requests.length + history.length} recorded`}
-              </span>
-            </div>
-          </div>
-
-          <div className="metric-card">
-            <div className="metric-icon-wrap green-bg">
-              <Clock size={20} color="#10b981" />
-            </div>
-            <div className="metric-info">
-              <div className="metric-label-row">
-                <span className="metric-label">Pending</span>
-                <ChevronRight size={14} className="metric-arrow" />
+              <div className="stat-value">{requests.length + history.length}</div>
+              <div className="stat-desc">
+                {requests.length + history.length === 0 ? 'No tickets recorded' : 'All incoming requests'}
               </div>
-              <span className="metric-val">{requests.length}</span>
-              <span className="metric-subtext">
-                {requests.length === 0 ? 'No pending tickets' : `${requests.length} active`}
-              </span>
             </div>
-          </div>
 
-          <div className="metric-card">
-            <div className="metric-icon-wrap purple-bg">
-              <CheckCircle2 size={20} color="#8b5cf6" />
-            </div>
-            <div className="metric-info">
-              <div className="metric-label-row">
-                <span className="metric-label">Resolved</span>
-                <ChevronRight size={14} className="metric-arrow" />
+            <div className="stat-card">
+              <div className="stat-card-header">
+                <span className="stat-label">Pending</span>
+                <Clock size={16} className="stat-icon" />
               </div>
-              <span className="metric-val">{history.length}</span>
-              <span className="metric-subtext">
-                {history.length === 0 ? 'No resolved tickets' : `${history.length} closed`}
-              </span>
+              <div className="stat-value">{requests.length}</div>
+              <div className="stat-desc">
+                {requests.length === 0 ? 'Queue is currently empty' : 'Awaiting technician resolution'}
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-card-header">
+                <span className="stat-label">Resolved</span>
+                <CheckCircle2 size={16} className="stat-icon" />
+              </div>
+              <div className="stat-value">{history.length}</div>
+              <div className="stat-desc">
+                {history.length === 0 ? 'No tickets resolved' : 'Completed support actions'}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="canvas-panel">
-          <AnimatePresence>
-            {requests.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="tickets-empty-view"
-              >
-                <div className="empty-graphic-circle">
-                  <div className="ticket-stamp-graphic">
-                    <Ticket size={36} color="#3b82f6" />
-                    <div className="check-badge-tiny">
-                      <Check size={12} color="#ffffff" strokeWidth={3} />
-                    </div>
+          <div className="board-panel">
+            <AnimatePresence>
+              {requests.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="empty-board-content"
+                >
+                  <div className="empty-board-icon">
+                    <Inbox size={28} />
                   </div>
-                </div>
-                <h2>No Active Tickets</h2>
-                <p>
-                  You don't have any active support tickets at the moment.
-                  <br />
-                  When an agent requests help, tickets will automatically appear here.
-                </p>
-              </motion.div>
-            ) : (
-              <div className="active-cards-grid">
-                {requests.map((req) => (
-                  <motion.div 
-                    key={req.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="ticket-active-box"
-                  >
-                    <div className="ticket-box-top">
-                      <div className="pc-pill">
-                        <Monitor size={15} color="#2563eb" />
-                        <span>{req.pcNumber}</span>
-                      </div>
-                      <span className="ticket-time-chip">
-                        <Clock size={12} />
-                        {new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-
-                    <div className="ticket-box-details">
-                      <div className="ticket-detail-item">
-                        <User size={14} />
-                        <span><strong>User:</strong> {req.username}</span>
-                      </div>
-                      <div className="ticket-detail-item">
-                        <Server size={14} />
-                        <span><strong>IP:</strong> {req.ipAddress || 'Unknown'}</span>
-                      </div>
-                    </div>
-
-                    <button 
-                      className="resolve-ticket-btn"
-                      onClick={() => resolveRequest(req.id)}
+                  <h2>No Active Tickets</h2>
+                  <p>
+                    You don't have any active support tickets at the moment.
+                    <br />
+                    When an agent requests help, tickets will automatically appear here.
+                  </p>
+                </motion.div>
+              ) : (
+                <div className="tickets-grid-flow">
+                  {requests.map((req) => (
+                    <motion.div 
+                      key={req.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      className="ticket-flow-card"
                     >
-                      <CheckCircle2 size={16} />
-                      <span>Resolve Ticket</span>
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </AnimatePresence>
+                      <div className="flow-card-head">
+                        <div className="device-tag">
+                          <Monitor size={14} />
+                          <span>{req.pcNumber}</span>
+                        </div>
+                        <span className="flow-time">
+                          <Clock size={12} />
+                          {new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+
+                      <div className="flow-card-body">
+                        <div className="flow-data-point">
+                          <User size={14} />
+                          <span className="flow-key">User</span>
+                          <span className="flow-val">{req.username}</span>
+                        </div>
+                        <div className="flow-data-point">
+                          <Server size={14} />
+                          <span className="flow-key">IP</span>
+                          <span className="flow-val">{req.ipAddress || '127.0.0.1'}</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        className="resolve-flat-btn"
+                        onClick={() => resolveRequest(req.id)}
+                      >
+                        <Check size={14} />
+                        <span>Resolve Ticket</span>
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </main>
 
-      <aside className="right-history-panel">
-        <div className="history-header">
-          <div className="history-header-title">
-            <History size={18} color="#0f172a" />
-            <h3>Ticket History</h3>
+      <aside className="history-dock">
+        <div className="dock-header">
+          <div className="dock-title">
+            <History size={16} />
+            <span>Ticket History</span>
           </div>
-          <button className="view-all-link">
+          <button className="dock-action-link">
             <span>View All</span>
-            <ArrowRight size={13} />
+            <ArrowRight size={12} />
           </button>
         </div>
 
-        <div className="history-items-list">
+        <div className="dock-list">
           {displayHistory.map((item, index) => (
-            <div key={index} className="history-row-item">
-              <div className="history-dot" style={{ backgroundColor: item.color || '#10b981' }}></div>
-              <div className="history-row-content">
-                <span className="history-id">{item.id}</span>
-                <span className="history-name">{item.issue}</span>
-                <span className="history-timestamp">{item.status} • {item.time}</span>
+            <div key={index} className="dock-item">
+              <div className="dock-dot"></div>
+              <div className="dock-meta">
+                <span className="dock-id">{item.id}</span>
+                <span className="dock-issue">{item.issue}</span>
+                <span className="dock-sub">{item.status} • {item.time}</span>
               </div>
-              <ChevronRight size={15} className="history-chevron" />
             </div>
           ))}
         </div>
