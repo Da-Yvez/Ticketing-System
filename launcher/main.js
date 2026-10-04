@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -10,8 +10,9 @@ let processes = {
 
 function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 450,
-        height: 520,
+        title: 'AhasaTV IT Support System Launcher',
+        width: 900,
+        height: 680,
         resizable: false,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -40,7 +41,10 @@ function killProcess(type) {
             processes[type].kill();
         }
         processes[type] = null;
-        mainWindow.webContents.send('status', type, 'stopped');
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('status', type, 'stopped');
+            mainWindow.webContents.send('log', type, `[SYSTEM] ${type} stopped.\n`);
+        }
     }
 }
 
@@ -61,12 +65,25 @@ ipcMain.on('start-service', (event, type) => {
     }
 
     processes[type] = spawn(cmd, args, { cwd, shell: true });
-    mainWindow.webContents.send('status', type, 'running');
+    
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('status', type, 'running');
+        mainWindow.webContents.send('log', type, `[SYSTEM] Starting ${type}...\n`);
+    }
+
+    processes[type].stdout.on('data', (data) => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('log', type, data.toString());
+    });
+
+    processes[type].stderr.on('data', (data) => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('log', type, data.toString());
+    });
 
     processes[type].on('close', (code) => {
         processes[type] = null;
-        if (mainWindow) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('status', type, 'stopped');
+            mainWindow.webContents.send('log', type, `[SYSTEM] ${type} exited with code ${code}.\n`);
         }
     });
 });
@@ -80,6 +97,14 @@ ipcMain.on('restart-service', (event, type) => {
     setTimeout(() => {
         ipcMain.emit('start-service', event, type);
     }, 1000);
+});
+
+ipcMain.on('open-dashboard', () => {
+    shell.openExternal('http://localhost:5173');
+});
+
+ipcMain.on('open-yvexa', () => {
+    shell.openExternal('https://yvexa.dev');
 });
 
 app.on('will-quit', () => {

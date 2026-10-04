@@ -3,57 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AhasaTV Launcher</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>AhasaTV IT Support System Launcher</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="launcher-container">
-        <header>
-            <div class="logo">
-                <div class="logo-box">A</div>
-            </div>
-            <div class="header-text">
-                <h1>AhasaTV</h1>
-                <p>Support System Engine</p>
-            </div>
-        </header>
+    <div class="launcher-layout">
+        <!-- LEFT COLUMN: Controls -->
+        <div class="launcher-controls">
+            <header>
+                <img src="../dashboard/src/assets/logo.jpg" class="brand-logo" alt="AhasaTV Logo">
+                <div class="header-text">
+                    <h1>AhasaTV</h1>
+                    <p>Support System Engine</p>
+                </div>
+            </header>
 
-        <div class="services">
-            <!-- Frontend Service -->
-            <div class="service-card" id="card-frontend">
-                <div class="service-info">
-                    <div class="status-indicator" id="indicator-frontend"></div>
-                    <div>
-                        <h2>Dashboard (UI)</h2>
-                        <span class="status-text" id="status-frontend">Stopped</span>
+            <div class="services">
+                <!-- Frontend Service -->
+                <div class="service-card" id="card-frontend">
+                    <div class="service-info">
+                        <div class="status-indicator" id="indicator-frontend"></div>
+                        <div>
+                            <h2>Dashboard (UI)</h2>
+                            <span class="status-text" id="status-frontend">Stopped</span>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" onclick="startService('frontend')" id="btn-start-frontend">Start</button>
+                        <button class="btn btn-restart" onclick="restartService('frontend')" id="btn-restart-frontend" disabled>↺</button>
+                        <button class="btn btn-danger" onclick="stopService('frontend')" id="btn-stop-frontend" disabled>Stop</button>
+                    </div>
+                    <button class="btn btn-secondary mt-2" onclick="openDashboard()" id="btn-open-dashboard" disabled>Open Dashboard URL</button>
+                </div>
+
+                <!-- Backend Service -->
+                <div class="service-card" id="card-backend">
+                    <div class="service-info">
+                        <div class="status-indicator" id="indicator-backend"></div>
+                        <div>
+                            <h2>Core API (Brain)</h2>
+                            <span class="status-text" id="status-backend">Stopped</span>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" onclick="startService('backend')" id="btn-start-backend">Start</button>
+                        <button class="btn btn-restart" onclick="restartService('backend')" id="btn-restart-backend" disabled>↺</button>
+                        <button class="btn btn-danger" onclick="stopService('backend')" id="btn-stop-backend" disabled>Stop</button>
                     </div>
                 </div>
-                <div class="controls">
-                    <button class="btn btn-primary" onclick="startService('frontend')" id="btn-start-frontend">Start</button>
-                    <button class="btn btn-restart" onclick="restartService('frontend')" id="btn-restart-frontend" disabled>↺</button>
-                    <button class="btn btn-danger" onclick="stopService('frontend')" id="btn-stop-frontend" disabled>Stop</button>
-                </div>
             </div>
 
-            <!-- Backend Service -->
-            <div class="service-card" id="card-backend">
-                <div class="service-info">
-                    <div class="status-indicator" id="indicator-backend"></div>
-                    <div>
-                        <h2>Core API (Brain)</h2>
-                        <span class="status-text" id="status-backend">Stopped</span>
-                    </div>
-                </div>
-                <div class="controls">
-                    <button class="btn btn-primary" onclick="startService('backend')" id="btn-start-backend">Start</button>
-                    <button class="btn btn-restart" onclick="restartService('backend')" id="btn-restart-backend" disabled>↺</button>
-                    <button class="btn btn-danger" onclick="stopService('backend')" id="btn-stop-backend" disabled>Stop</button>
-                </div>
+            <button class="btn-start-all" onclick="startAll()">Initialize System</button>
+
+            <div class="credits">
+                Powered by <a href="#" onclick="openYvexa()">Yvexa</a>
             </div>
         </div>
 
-        <button class="btn-start-all" onclick="startAll()">Initialize System</button>
+        <!-- RIGHT COLUMN: Logs -->
+        <div class="launcher-logs">
+            <div class="log-header">
+                <h2>Live Logs</h2>
+                <button class="btn-clear" onclick="clearLogs()">Clear</button>
+            </div>
+            <div class="log-container" id="log-output">
+                <!-- Logs appear here -->
+            </div>
+        </div>
     </div>
 
     <script src="renderer.js"></script>

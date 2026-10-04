@@ -17,6 +17,18 @@ function startAll() {
     }, 1000);
 }
 
+function openDashboard() {
+    window.api.openDashboard();
+}
+
+function openYvexa() {
+    window.api.openYvexa();
+}
+
+function clearLogs() {
+    document.getElementById('log-output').innerHTML = '';
+}
+
 window.api.onStatusChange((event, type, status) => {
     const isRunning = status === 'running';
     
@@ -29,4 +41,33 @@ window.api.onStatusChange((event, type, status) => {
     document.getElementById(`btn-start-${type}`).disabled = isRunning;
     document.getElementById(`btn-stop-${type}`).disabled = !isRunning;
     document.getElementById(`btn-restart-${type}`).disabled = !isRunning;
+    
+    if (type === 'frontend') {
+        document.getElementById('btn-open-dashboard').disabled = !isRunning;
+    }
+});
+
+window.api.onLogMsg((event, type, msg) => {
+    const logBox = document.getElementById('log-output');
+    
+    const lines = msg.split('\n').filter(line => line.trim() !== '');
+    
+    lines.forEach(line => {
+        const span = document.createElement('div');
+        span.className = 'log-line';
+        
+        const prefix = document.createElement('span');
+        prefix.className = `log-prefix-${type}`;
+        prefix.innerText = `[${type.toUpperCase()}] `;
+        
+        const content = document.createElement('span');
+        content.innerText = line;
+        
+        span.appendChild(prefix);
+        span.appendChild(content);
+        logBox.appendChild(span);
+    });
+    
+    // Auto scroll to bottom
+    logBox.scrollTop = logBox.scrollHeight;
 });
