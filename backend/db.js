@@ -1,24 +1,16 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+const { createClient } = require('@supabase/supabase-js');
 
-const dbPath = path.resolve(__dirname, 'helpdesk.db');
-const db = new sqlite3.Database(dbPath);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS devices (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        pcNumber TEXT UNIQUE,
-        ipAddress TEXT,
-        username TEXT
-    )`);
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('[DB WARNING] SUPABASE_URL or SUPABASE_KEY is missing in .env');
+}
 
-    db.run(`CREATE TABLE IF NOT EXISTS requests (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        deviceId INTEGER,
-        status TEXT DEFAULT 'pending',
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (deviceId) REFERENCES devices(id)
-    )`);
+const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseKey || 'placeholder', {
+  auth: { persistSession: false }
 });
 
-module.exports = db;
+module.exports = supabase;

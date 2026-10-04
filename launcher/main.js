@@ -11,6 +11,7 @@ let processes = {
 function createWindow() {
     mainWindow = new BrowserWindow({
         title: 'AhasaTV IT Support System Launcher',
+        icon: path.join(__dirname, '../dashboard/src/assets/logo.jpg'),
         width: 900,
         height: 680,
         resizable: false,

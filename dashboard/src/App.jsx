@@ -7,14 +7,21 @@ import {
   MessageSquare, 
   Clock, 
   CheckCircle2, 
-  ArrowRight,
-  Server,
-  User,
-  History,
-  Check,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Inbox
+  Server, 
+  User, 
+  History as HistoryIcon, 
+  Check, 
+  PanelLeftClose, 
+  PanelLeftOpen, 
+  Inbox,
+  Plus,
+  Trash2,
+  XCircle,
+  ShieldCheck,
+  Search,
+  Building,
+  RefreshCw,
+  HardDrive
 } from 'lucide-react';
 import logo from './assets/logo.jpg';
 import StackedBarPulse from './components/ui/stacked-bar-pulse';
@@ -22,12 +29,48 @@ import './App.css';
 
 const SOCKET_URL = 'http://localhost:4000';
 
+const DEPARTMENTS = [
+  'News',
+  'Engineering',
+  'Edit',
+  'Graphic',
+  'Production',
+  'Managers',
+  'Makeup',
+  'Scheduling',
+  'HR',
+  'Finance'
+];
+
+const DEPT_COLORS = {
+  News: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
+  Engineering: { bg: 'rgba(6, 182, 212, 0.15)', text: '#22d3ee', border: 'rgba(6, 182, 212, 0.3)' },
+  Edit: { bg: 'rgba(168, 85, 247, 0.15)', text: '#c084fc', border: 'rgba(168, 85, 247, 0.3)' },
+  Graphic: { bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6', border: 'rgba(236, 72, 153, 0.3)' },
+  Production: { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: 'rgba(16, 185, 129, 0.3)' },
+  Managers: { bg: 'rgba(99, 102, 241, 0.15)', text: '#818cf8', border: 'rgba(99, 102, 241, 0.3)' },
+  Makeup: { bg: 'rgba(244, 63, 94, 0.15)', text: '#fb7185', border: 'rgba(244, 63, 94, 0.3)' },
+  Scheduling: { bg: 'rgba(14, 165, 233, 0.15)', text: '#38bdf8', border: 'rgba(14, 165, 233, 0.3)' },
+  HR: { bg: 'rgba(139, 92, 246, 0.15)', text: '#a78bfa', border: 'rgba(139, 92, 246, 0.3)' },
+  Finance: { bg: 'rgba(20, 184, 166, 0.15)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' }
+};
+
 function App() {
   const [requests, setRequests] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [allTickets, setAllTickets] = useState([]);
+  const [devices, setDevices] = useState([]);
   const [activeTab, setActiveTab] = useState('tickets');
   const [isConnected, setIsConnected] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Device filtering & form state
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState('All');
+  const [deviceSearch, setDeviceSearch] = useState('');
+  const [newPcNumber, setNewPcNumber] = useState('');
+  const [newIpAddress, setNewIpAddress] = useState('');
+  const [newAssignedUser, setNewAssignedUser] = useState('');
+  const [newDepartment, setNewDepartment] = useState('News');
+  const [deviceMsg, setDeviceMsg] = useState('');
 
   useEffect(() => {
     const socket = io(SOCKET_URL);
@@ -35,6 +78,7 @@ function App() {
     socket.on('connect', () => {
       setIsConnected(true);
       fetchRequests();
+      fetchDevices();
     });
 
     socket.on('disconnect', () => {
@@ -42,7 +86,21 @@ function App() {
     });
 
     socket.on('new-request', (request) => {
-      setRequests((prev) => [...prev, request]);
+      setRequests((prev) => {
+        if (prev.some(r => r.id === request.id)) return prev;
+        return [request, ...prev];
+      });
+      fetchRequests();
+    });
+
+    socket.on('ticket-resolved', ({ id }) => {
+      setRequests((prev) => prev.filter(req => req.id !== id));
+      fetchRequests();
+    });
+
+    socket.on('ticket-dismissed', ({ id }) => {
+      setRequests((prev) => prev.filter(req => req.id !== id));
+      fetchRequests();
     });
 
     return () => {
@@ -52,40 +110,94 @@ function App() {
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch(`${SOCKET_URL}/api/requests`);
-      const data = await response.json();
-      setRequests(data);
+      const pendingRes = await fetch(`${SOCKET_URL}/api/requests?status=pending`);
+      const pendingData = await pendingRes.json();
+      setRequests(Array.isArray(pendingData) ? pendingData : []);
+
+      const allRes = await fetch(`${SOCKET_URL}/api/requests?status=all`);
+      const allData = await allRes.json();
+      setAllTickets(Array.isArray(allData) ? allData : []);
     } catch (error) {}
   };
 
-  const resolveRequest = (id) => {
-    const resolvedItem = requests.find(req => req.id === id);
-    if (resolvedItem) {
-      setHistory(prev => [
-        {
-          id: `TKT-${String(resolvedItem.id).padStart(4, '0')}`,
-          issue: `Help Request: ${resolvedItem.pcNumber}`,
-          user: resolvedItem.username,
-          time: 'Just now',
-          status: 'Resolved'
-        },
-        ...prev
-      ]);
-    }
-    setRequests((prev) => prev.filter(req => req.id !== id));
+  const fetchDevices = async () => {
+    try {
+      const res = await fetch(`${SOCKET_URL}/api/devices`);
+      const data = await res.json();
+      setDevices(Array.isArray(data) ? data : []);
+    } catch (error) {}
   };
 
-  const sampleHistory = [
-    { id: '#TKT-0042', issue: 'Network Issue', status: 'Resolved', time: '2 days ago' },
-    { id: '#TKT-0041', issue: 'Laptop Setup', status: 'Closed', time: '4 days ago' },
-    { id: '#TKT-0040', issue: 'Access Request', status: 'Resolved', time: '1 week ago' },
-    { id: '#TKT-0039', issue: 'Printer Not Working', status: 'Resolved', time: '1 week ago' },
-    { id: '#TKT-0038', issue: 'Software Installation', status: 'Closed', time: '2 weeks ago' },
-    { id: '#TKT-0037', issue: 'Email Configuration', status: 'Resolved', time: '2 weeks ago' },
-    { id: '#TKT-0036', issue: 'Hardware Replacement', status: 'Closed', time: '3 weeks ago' }
-  ];
+  const resolveRequest = async (id) => {
+    try {
+      const res = await fetch(`${SOCKET_URL}/api/requests/${id}/resolve`, { method: 'PATCH' });
+      if (res.ok) {
+        setRequests(prev => prev.filter(req => req.id !== id));
+        fetchRequests();
+      }
+    } catch (error) {}
+  };
 
-  const displayHistory = history.length > 0 ? history : sampleHistory;
+  const dismissRequest = async (id) => {
+    try {
+      const res = await fetch(`${SOCKET_URL}/api/requests/${id}/dismiss`, { method: 'PATCH' });
+      if (res.ok) {
+        setRequests(prev => prev.filter(req => req.id !== id));
+        fetchRequests();
+      }
+    } catch (error) {}
+  };
+
+  const handleRegisterDevice = async (e) => {
+    e.preventDefault();
+    if (!newPcNumber || !newIpAddress) return;
+
+    try {
+      const res = await fetch(`${SOCKET_URL}/api/devices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pcNumber: newPcNumber,
+          ipAddress: newIpAddress,
+          assignedUser: newAssignedUser,
+          department: newDepartment
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDeviceMsg('Device authorized successfully!');
+        setNewPcNumber('');
+        setNewIpAddress('');
+        setNewAssignedUser('');
+        fetchDevices();
+        setTimeout(() => setDeviceMsg(''), 3000);
+      } else {
+        setDeviceMsg(data.error || 'Failed to authorize device');
+      }
+    } catch (error) {
+      setDeviceMsg('Connection error');
+    }
+  };
+
+  const handleDeleteDevice = async (id) => {
+    try {
+      const res = await fetch(`${SOCKET_URL}/api/devices/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchDevices();
+      }
+    } catch (error) {}
+  };
+
+  const filteredDevices = devices.filter(d => {
+    const matchesDept = selectedDeptFilter === 'All' || d.department === selectedDeptFilter;
+    const matchesSearch = 
+      (d.pc_number || '').toLowerCase().includes(deviceSearch.toLowerCase()) ||
+      (d.ip_address || '').toLowerCase().includes(deviceSearch.toLowerCase()) ||
+      (d.assigned_user || '').toLowerCase().includes(deviceSearch.toLowerCase());
+    return matchesDept && matchesSearch;
+  });
+
+  const resolvedTickets = allTickets.filter(t => t.status === 'resolved' || t.status === 'dismissed');
 
   if (!isConnected) {
     return (
@@ -104,7 +216,7 @@ function App() {
           <motion.aside 
             className="left-sidebar"
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 260, opacity: 1 }}
+            animate={{ width: 250, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
@@ -114,7 +226,7 @@ function App() {
                   <img src={logo} alt="AhasaTV" className="brand-avatar" />
                   <div className="brand-meta">
                     <span className="brand-name">AhasaTV</span>
-                    <span className="brand-role">IT Support System</span>
+                    <span className="brand-role">IT Operations Hub</span>
                   </div>
                 </div>
                 <button 
@@ -132,28 +244,35 @@ function App() {
                   onClick={() => setActiveTab('tickets')}
                 >
                   <Ticket size={16} />
-                  <span>Tickets</span>
+                  <span>Live Tickets ({requests.length})</span>
                 </button>
                 <button 
                   className={`nav-tab ${activeTab === 'devices' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('devices')}
+                  onClick={() => { setActiveTab('devices'); fetchDevices(); }}
                 >
                   <Monitor size={16} />
-                  <span>Devices</span>
+                  <span>Devices ({devices.length})</span>
+                </button>
+                <button 
+                  className={`nav-tab ${activeTab === 'history' ? 'active' : ''}`}
+                  onClick={() => { setActiveTab('history'); fetchRequests(); }}
+                >
+                  <HistoryIcon size={16} />
+                  <span>Ticket History ({resolvedTickets.length})</span>
                 </button>
                 <button 
                   className={`nav-tab ${activeTab === 'messages' ? 'active' : ''}`}
                   onClick={() => setActiveTab('messages')}
                 >
                   <MessageSquare size={16} />
-                  <span>Messages</span>
+                  <span>Broadcasts</span>
                 </button>
               </nav>
 
               <div className="sidebar-bottom">
                 <div className={`status-pill ${isConnected ? 'live' : 'dead'}`}>
                   <span className="status-dot"></span>
-                  <span>{isConnected ? 'Server Online' : 'Server Offline'}</span>
+                  <span>{isConnected ? 'Core Engine Online' : 'Core Engine Offline'}</span>
                 </div>
               </div>
             </div>
@@ -180,140 +299,385 @@ function App() {
 
       <main className="content-stage">
         <div className="stage-inner">
-          <header className="title-area">
-            <h1 className="main-title">Tickets</h1>
-            <p className="main-subtitle">View and manage your support tickets.</p>
-          </header>
 
-          <div className="stats-row">
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <span className="stat-label">Total Tickets</span>
-                <Ticket size={16} className="stat-icon" />
-              </div>
-              <div className="stat-value">{requests.length + history.length}</div>
-              <div className="stat-desc">
-                {requests.length + history.length === 0 ? 'No tickets recorded' : 'All incoming requests'}
-              </div>
-            </div>
+          {/* TAB 1: TICKETS */}
+          {activeTab === 'tickets' && (
+            <>
+              <header className="title-area">
+                <h1 className="main-title">Live Support Dispatch</h1>
+                <p className="main-subtitle">Real-time incoming support tickets from authorized network PCs.</p>
+              </header>
 
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <span className="stat-label">Pending</span>
-                <Clock size={16} className="stat-icon" />
-              </div>
-              <div className="stat-value">{requests.length}</div>
-              <div className="stat-desc">
-                {requests.length === 0 ? 'Queue is currently empty' : 'Awaiting technician resolution'}
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <span className="stat-label">Resolved</span>
-                <CheckCircle2 size={16} className="stat-icon" />
-              </div>
-              <div className="stat-value">{history.length}</div>
-              <div className="stat-desc">
-                {history.length === 0 ? 'No tickets resolved' : 'Completed support actions'}
-              </div>
-            </div>
-          </div>
-
-          <div className="board-panel">
-            <AnimatePresence>
-              {requests.length === 0 ? (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="empty-board-content"
-                >
-                  <div className="empty-board-icon">
-                    <Inbox size={28} />
+              <div className="stats-row">
+                <div className="stat-card">
+                  <div className="stat-card-header">
+                    <span className="stat-label">Active Queue</span>
+                    <Clock size={16} className="stat-icon" />
                   </div>
-                  <h2>No Active Tickets</h2>
-                  <p>
-                    You don't have any active support tickets at the moment.
-                    <br />
-                    When an agent requests help, tickets will automatically appear here.
-                  </p>
-                </motion.div>
-              ) : (
-                <div className="tickets-grid-flow">
-                  {requests.map((req) => (
-                    <motion.div 
-                      key={req.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.98 }}
-                      className="ticket-flow-card"
-                    >
-                      <div className="flow-card-head">
-                        <div className="device-tag">
-                          <Monitor size={14} />
-                          <span>{req.pcNumber}</span>
-                        </div>
-                        <span className="flow-time">
-                          <Clock size={12} />
-                          {new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-
-                      <div className="flow-card-body">
-                        <div className="flow-data-point">
-                          <User size={14} />
-                          <span className="flow-key">User</span>
-                          <span className="flow-val">{req.username}</span>
-                        </div>
-                        <div className="flow-data-point">
-                          <Server size={14} />
-                          <span className="flow-key">IP</span>
-                          <span className="flow-val">{req.ipAddress || '127.0.0.1'}</span>
-                        </div>
-                      </div>
-
-                      <button 
-                        className="resolve-flat-btn"
-                        onClick={() => resolveRequest(req.id)}
-                      >
-                        <Check size={14} />
-                        <span>Resolve Ticket</span>
-                      </button>
-                    </motion.div>
-                  ))}
+                  <div className="stat-value">{requests.length}</div>
+                  <div className="stat-desc">
+                    {requests.length === 0 ? 'All workstations operating smoothly' : 'Requires technician attention'}
+                  </div>
                 </div>
-              )}
-            </AnimatePresence>
-          </div>
+
+                <div className="stat-card">
+                  <div className="stat-card-header">
+                    <span className="stat-label">Authorized Workstations</span>
+                    <Monitor size={16} className="stat-icon" />
+                  </div>
+                  <div className="stat-value">{devices.length}</div>
+                  <div className="stat-desc">Pre-registered inventory endpoints</div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-card-header">
+                    <span className="stat-label">Resolved Tickets</span>
+                    <CheckCircle2 size={16} className="stat-icon" />
+                  </div>
+                  <div className="stat-value">{resolvedTickets.length}</div>
+                  <div className="stat-desc">Logged in Cloud database</div>
+                </div>
+              </div>
+
+              <div className="board-panel">
+                <AnimatePresence>
+                  {requests.length === 0 ? (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="empty-board-content"
+                    >
+                      <div className="empty-board-icon">
+                        <Inbox size={26} />
+                      </div>
+                      <h2>Clear Support Queue</h2>
+                      <p>
+                        No active help requests pending at the moment.
+                        <br />
+                        When a verified workstation clicks "Request Help", it will immediately land here.
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <div className="tickets-grid-flow">
+                      {requests.map((req) => (
+                        <motion.div 
+                          key={req.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.98 }}
+                          className="ticket-flow-card"
+                        >
+                          <div className="flow-card-head">
+                            <div className="device-tag">
+                              <Monitor size={14} />
+                              <span>{req.pcNumber}</span>
+                            </div>
+                            <span className="flow-time">
+                              <Clock size={12} />
+                              {new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+
+                          <div className="flow-card-body">
+                            <div className="flow-data-point">
+                              <User size={14} />
+                              <span className="flow-key">User</span>
+                              <span className="flow-val">{req.username}</span>
+                            </div>
+                            <div className="flow-data-point">
+                              <Server size={14} />
+                              <span className="flow-key">IP</span>
+                              <span className="flow-val">{req.ipAddress || '127.0.0.1'}</span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                            <button 
+                              className="resolve-flat-btn"
+                              style={{ flex: 1 }}
+                              onClick={() => resolveRequest(req.id)}
+                            >
+                              <Check size={14} />
+                              <span>Resolve</span>
+                            </button>
+                            <button 
+                              className="resolve-flat-btn"
+                              style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.25)', width: '42px' }}
+                              onClick={() => dismissRequest(req.id)}
+                              title="Dismiss request"
+                            >
+                              <XCircle size={15} />
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </>
+          )}
+
+          {/* TAB 2: MODERN DEVICES DIRECTORY */}
+          {activeTab === 'devices' && (
+            <>
+              <header className="title-area">
+                <h1 className="main-title">Workstation Directory</h1>
+                <p className="main-subtitle">Department-segmented inventory of authorized endpoints.</p>
+              </header>
+
+              {/* Department Pills Filter */}
+              <div className="dept-pill-bar">
+                <button 
+                  className={`dept-pill ${selectedDeptFilter === 'All' ? 'active' : ''}`}
+                  onClick={() => setSelectedDeptFilter('All')}
+                >
+                  All Departments ({devices.length})
+                </button>
+                {DEPARTMENTS.map(dept => {
+                  const count = devices.filter(d => d.department === dept).length;
+                  return (
+                    <button 
+                      key={dept}
+                      className={`dept-pill ${selectedDeptFilter === dept ? 'active' : ''}`}
+                      onClick={() => setSelectedDeptFilter(dept)}
+                    >
+                      {dept} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Quick Authorize Form */}
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '12px', padding: '1.4rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <ShieldCheck size={18} color="#38bdf8" />
+                    Authorize New PC
+                  </h3>
+                  {deviceMsg && (
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: deviceMsg.includes('success') ? '#34d399' : '#f87171' }}>
+                      {deviceMsg}
+                    </span>
+                  )}
+                </div>
+
+                <form onSubmit={handleRegisterDevice} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr)) auto', gap: '12px', alignItems: 'end' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>PC Hostname</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. WS-NEWS-01" 
+                      value={newPcNumber} 
+                      onChange={(e) => setNewPcNumber(e.target.value)}
+                      required
+                      style={{ width: '100%', background: 'var(--bg-stage)', border: '1px solid var(--border-light)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>Static / Local IP</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 192.168.1.105" 
+                      value={newIpAddress} 
+                      onChange={(e) => setNewIpAddress(e.target.value)}
+                      required
+                      style={{ width: '100%', background: 'var(--bg-stage)', border: '1px solid var(--border-light)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>Department</label>
+                    <select 
+                      value={newDepartment}
+                      onChange={(e) => setNewDepartment(e.target.value)}
+                      style={{ width: '100%', background: 'var(--bg-stage)', border: '1px solid var(--border-light)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '0.82rem' }}
+                    >
+                      {DEPARTMENTS.map(dept => (
+                        <option key={dept} value={dept} style={{ background: '#111827', color: '#fff' }}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>Assigned User</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Kasun Fernando" 
+                      value={newAssignedUser} 
+                      onChange={(e) => setNewAssignedUser(e.target.value)}
+                      style={{ width: '100%', background: 'var(--bg-stage)', border: '1px solid var(--border-light)', color: '#fff', padding: '9px 12px', borderRadius: '8px', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600 }}
+                  >
+                    <Plus size={16} />
+                    <span>Authorize</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Search & Actions Bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                <div style={{ position: 'relative', width: '320px' }}>
+                  <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                  <input 
+                    type="text" 
+                    placeholder="Search PC name, IP, or user..." 
+                    value={deviceSearch}
+                    onChange={(e) => setDeviceSearch(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px 8px 36px', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '8px', color: '#fff', fontSize: '0.82rem' }}
+                  />
+                </div>
+                <button 
+                  onClick={fetchDevices}
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 500 }}
+                >
+                  <RefreshCw size={14} />
+                  <span>Refresh List</span>
+                </button>
+              </div>
+
+              {/* Devices Cards Grid */}
+              <div className="devices-mesh-grid">
+                {filteredDevices.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                    <HardDrive size={32} style={{ margin: '0 auto 10px auto', opacity: 0.4 }} />
+                    <p style={{ margin: 0, fontSize: '0.9rem' }}>No authorized workstations found matching the criteria.</p>
+                  </div>
+                ) : (
+                  filteredDevices.map(device => {
+                    const deptStyle = DEPT_COLORS[device.department] || { bg: 'rgba(255, 255, 255, 0.08)', text: '#94a3b8', border: 'rgba(255, 255, 255, 0.15)' };
+                    return (
+                      <div key={device.id} className="device-telemetry-card">
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                          <div>
+                            <span 
+                              className="dept-badge" 
+                              style={{ background: deptStyle.bg, color: deptStyle.text, border: `1px solid ${deptStyle.border}` }}
+                            >
+                              <Building size={11} />
+                              {device.department || 'General'}
+                            </span>
+                            <h4 style={{ margin: '8px 0 2px 0', fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.01em' }}>
+                              {device.pc_number}
+                            </h4>
+                          </div>
+                          <button 
+                            onClick={() => handleDeleteDevice(device.id)}
+                            style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', borderRadius: '4px', transition: 'color 0.15s' }}
+                            onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+                            onMouseOut={(e) => e.currentTarget.style.color = '#64748b'}
+                            title="Revoke authorization"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '10px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                            <span>IP Address:</span>
+                            <span style={{ color: '#38bdf8', fontFamily: 'monospace', fontWeight: 600 }}>{device.ip_address}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                            <span>Assigned:</span>
+                            <span style={{ color: '#f8fafc', fontWeight: 600 }}>{device.assigned_user || 'Unassigned'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
+
+          {/* TAB 3: DEDICATED TICKET HISTORY */}
+          {activeTab === 'history' && (
+            <>
+              <header className="title-area">
+                <h1 className="main-title">Historical Records</h1>
+                <p className="main-subtitle">Permanent audit log of all resolved and dismissed IT support tickets.</p>
+              </header>
+
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden' }}>
+                <table className="table-glass">
+                  <thead>
+                    <tr>
+                      <th>Ticket ID</th>
+                      <th>Workstation</th>
+                      <th>User</th>
+                      <th>IP Address</th>
+                      <th>Opened At</th>
+                      <th>Resolved At</th>
+                      <th style={{ textAlign: 'right' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resolvedTickets.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                          No tickets have been resolved or closed yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      resolvedTickets.map((ticket) => (
+                        <tr key={ticket.id}>
+                          <td style={{ fontWeight: 700, color: '#60a5fa', fontFamily: 'monospace' }}>
+                            TKT-{String(ticket.id).padStart(4, '0')}
+                          </td>
+                          <td style={{ fontWeight: 600, color: '#f8fafc' }}>{ticket.pcNumber}</td>
+                          <td style={{ color: 'var(--text-secondary)' }}>{ticket.username}</td>
+                          <td style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{ticket.ipAddress}</td>
+                          <td style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
+                            {new Date(ticket.timestamp).toLocaleString()}
+                          </td>
+                          <td style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
+                            {ticket.resolvedAt ? new Date(ticket.resolvedAt).toLocaleString() : '—'}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <span style={{ 
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 8px',
+                              borderRadius: '9999px',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              background: ticket.status === 'resolved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.2)',
+                              color: ticket.status === 'resolved' ? '#34d399' : '#94a3b8'
+                            }}>
+                              {ticket.status === 'resolved' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                              {ticket.status === 'resolved' ? 'Resolved' : 'Dismissed'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* TAB 4: BROADCASTS */}
+          {activeTab === 'messages' && (
+            <div>
+              <header className="title-area">
+                <h1 className="main-title">Network Announcements</h1>
+                <p className="main-subtitle">Push urgent messages and scheduled maintenance alerts to agent PCs.</p>
+              </header>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '14px', padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <MessageSquare size={36} style={{ margin: '0 auto 14px auto', color: 'var(--text-tertiary)' }} />
+                <h3 style={{ color: '#f8fafc', margin: '0 0 6px 0', fontSize: '1.1rem' }}>Broadcast Channel Ready</h3>
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>Send instant notifications to all active workstations or select specific departments.</p>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
-
-      <aside className="history-dock">
-        <div className="dock-header">
-          <div className="dock-title">
-            <History size={16} />
-            <span>Ticket History</span>
-          </div>
-          <button className="dock-action-link">
-            <span>View All</span>
-            <ArrowRight size={12} />
-          </button>
-        </div>
-
-        <div className="dock-list">
-          {displayHistory.map((item, index) => (
-            <div key={index} className="dock-item">
-              <div className="dock-dot"></div>
-              <div className="dock-meta">
-                <span className="dock-id">{item.id}</span>
-                <span className="dock-issue">{item.issue}</span>
-                <span className="dock-sub">{item.status} • {item.time}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </aside>
     </div>
   );
 }

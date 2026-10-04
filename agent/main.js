@@ -9,6 +9,18 @@ const configPath = path.join(app.getPath('userData'), 'config.json');
 
 app.dock && app.dock.hide();
 
+function getLocalIpAddress() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
 function createTray() {
   const icon = nativeImage.createEmpty();
   tray = new Tray(icon);
@@ -23,7 +35,6 @@ function toggleWindow(bounds) {
   if (window.isVisible()) {
     window.hide();
   } else {
-    // Basic positioning, more complex math needed for multi-monitor / exact taskbar position
     window.show();
     window.focus();
   }
@@ -51,7 +62,6 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Create a dummy icon file if it doesn't exist so it doesn't crash
   if (!fs.existsSync(path.join(__dirname, 'icon.png'))) {
     fs.writeFileSync(path.join(__dirname, 'icon.png'), ''); 
   }
@@ -59,12 +69,20 @@ app.whenReady().then(() => {
   createWindow();
 });
 
-// IPC Handlers
 ipcMain.handle('get-config', () => {
+  let savedConfig = {};
   if (fs.existsSync(configPath)) {
-    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    try {
+      savedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (e) {}
   }
-  return { pcNumber: os.hostname(), username: os.userInfo().username, serverIp: 'http://localhost:4000' };
+
+  return {
+    pcNumber: savedConfig.pcNumber || os.hostname(),
+    username: savedConfig.username || os.userInfo().username,
+    serverIp: savedConfig.serverIp || 'http://localhost:4000',
+    localIp: getLocalIpAddress()
+  };
 });
 
 ipcMain.handle('save-config', (event, config) => {
