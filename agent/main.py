@@ -11,6 +11,7 @@ import socketio
 import time
 from pystray import MenuItem as item
 from tkinter import simpledialog
+from hardware import get_comprehensive_hardware
 
 # Setup CustomTkinter Theme
 ctk.set_appearance_mode("dark")
@@ -163,9 +164,14 @@ class ITSupportApp(ctk.CTk):
         
         @self.sio.event
         def connect():
+            try:
+                hw = get_comprehensive_hardware()
+            except Exception:
+                hw = None
             self.sio.emit('register', {
                 'pcNumber': self.config_data['pcNumber'],
-                'ipAddress': self.config_data['localIp']
+                'ipAddress': self.config_data['localIp'],
+                'hardware': hw
             })
             
         @self.sio.event
@@ -186,6 +192,23 @@ class ITSupportApp(ctk.CTk):
                 time.sleep(1)
                 
         threading.Thread(target=run_sio, daemon=True).start()
+
+        def run_telemetry():
+            time.sleep(2)
+            while True:
+                try:
+                    url = f"{self.config_data['serverIp']}/api/devices/telemetry"
+                    hw = get_comprehensive_hardware()
+                    requests.post(url, json={
+                        'pcNumber': self.config_data['pcNumber'],
+                        'ipAddress': self.config_data['localIp'],
+                        'hardware': hw
+                    }, timeout=5)
+                except Exception:
+                    pass
+                time.sleep(300)
+
+        threading.Thread(target=run_telemetry, daemon=True).start()
 
     def show_broadcast(self, msg):
         win = ctk.CTkToplevel(self)

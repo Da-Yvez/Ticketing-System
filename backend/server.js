@@ -2,7 +2,19 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 const supabase = require('./db');
+
+const HARDWARE_CACHE_FILE = path.join(__dirname, 'hardware_cache.json');
+let hardwareCache = {};
+if (fs.existsSync(HARDWARE_CACHE_FILE)) {
+  try {
+    hardwareCache = JSON.parse(fs.readFileSync(HARDWARE_CACHE_FILE, 'utf8'));
+  } catch (e) {
+    hardwareCache = {};
+  }
+}
 
 const app = express();
 app.use(cors());
@@ -16,6 +28,37 @@ const io = new Server(server, {
   }
 });
 
+async function updateHardwareData(pcNumber, ipAddress, hardware) {
+  const normalizedPc = (pcNumber || '').trim();
+  if (!normalizedPc || !hardware) return false;
+
+  hardwareCache[normalizedPc] = {
+    ...hardware,
+    lastSeen: new Date().toISOString()
+  };
+
+  try {
+    fs.writeFileSync(HARDWARE_CACHE_FILE, JSON.stringify(hardwareCache, null, 2), 'utf8');
+  } catch (e) {}
+
+  try {
+    await supabase
+      .from('devices')
+      .update({
+        hardware_info: hardwareCache[normalizedPc],
+        last_seen: new Date().toISOString()
+      })
+      .eq('pc_number', normalizedPc);
+  } catch (err) {}
+
+  io.emit('device-hardware-updated', {
+    pcNumber: normalizedPc,
+    hardware: hardwareCache[normalizedPc]
+  });
+
+  return true;
+}
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   
@@ -23,6 +66,9 @@ io.on('connection', (socket) => {
     socket.pcNumber = data?.pcNumber;
     socket.ipAddress = data?.ipAddress;
     console.log(`Client registered: ${data?.pcNumber} at ${data?.ipAddress}`);
+    if (data?.hardware && data?.pcNumber) {
+      updateHardwareData(data.pcNumber, data.ipAddress, data.hardware);
+    }
   });
 
   socket.on('disconnect', () => {
@@ -106,7 +152,8 @@ app.post('/api/request-help', async (req, res) => {
       ipAddress: device.ip_address,
       status: newTicket.status,
       message: newTicket.message,
-      timestamp: newTicket.created_at
+      timestamp: newTicket.created_at,
+      hardware_info: hardwareCache[device.pc_number] || null
     };
 
     io.emit('new-request', requestData);
@@ -165,7 +212,8 @@ app.get('/api/requests', async (req, res) => {
       username: row.devices?.assigned_user || 'Unknown User',
       department: row.devices?.department || 'Unknown',
       message: row.message,
-      ipAddress: row.devices?.ip_address || '127.0.0.1'
+      ipAddress: row.devices?.ip_address || '127.0.0.1',
+      hardware_info: hardwareCache[row.devices?.pc_number] || null
     }));
 
     return res.json(formatted);
@@ -229,6 +277,15 @@ app.patch('/api/requests/:id/dismiss', async (req, res) => {
   }
 });
 
+app.post('/api/devices/telemetry', async (req, res) => {
+  const { pcNumber, ipAddress, hardware } = req.body;
+  if (!pcNumber) {
+    return res.status(400).json({ error: 'pcNumber is required' });
+  }
+  const updated = await updateHardwareData(pcNumber, ipAddress, hardware);
+  return res.json({ success: true, updated });
+});
+
 app.get('/api/devices', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -240,7 +297,12 @@ app.get('/api/devices', async (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch devices' });
     }
 
-    return res.json(data);
+    const merged = (data || []).map(device => ({
+      ...device,
+      hardware_info: hardwareCache[device.pc_number] || device.hardware_info || null
+    }));
+
+    return res.json(merged);
   } catch (err) {
     return res.status(500).json({ error: 'Internal server error' });
   }

@@ -21,7 +21,13 @@ import {
   Search,
   Building,
   RefreshCw,
-  HardDrive
+  HardDrive,
+  Copy,
+  CheckCheck,
+  Activity,
+  Radio,
+  Pencil,
+  Cpu
 } from 'lucide-react';
 import logo from './assets/logo.jpg';
 import StackedBarPulse from './components/ui/stacked-bar-pulse';
@@ -75,11 +81,53 @@ function App() {
   const [isAuthorizeModalOpen, setIsAuthorizeModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingDeviceId, setEditingDeviceId] = useState(null);
+  const [selectedHardwareDevice, setSelectedHardwareDevice] = useState(null);
+  const [isHardwareModalOpen, setIsHardwareModalOpen] = useState(false);
 
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastType, setBroadcastType] = useState('all');
   const [broadcastTarget, setBroadcastTarget] = useState('');
   const [broadcastStatus, setBroadcastStatus] = useState('');
+  const [copiedId, setCopiedId] = useState(null);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick((t) => t + 1);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleCopyIp = (text, id) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
+    }
+  };
+
+  const openHardwareForRequest = (req) => {
+    const matched = devices.find(d => d.pc_number === req.pcNumber || (req.deviceId && d.id === req.deviceId));
+    const deviceData = {
+      pc_number: req.pcNumber,
+      department: req.department,
+      ip_address: req.ipAddress,
+      assigned_user: req.username,
+      hardware_info: req.hardware_info || matched?.hardware_info || null
+    };
+    setSelectedHardwareDevice(deviceData);
+    setIsHardwareModalOpen(true);
+  };
+
+  const getElapsedString = (timestamp) => {
+    if (!timestamp) return 'Just now';
+    const diffSec = Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000));
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    return `${diffHours}h ${diffMin % 60}m ago`;
+  };
 
   useEffect(() => {
     const socket = io(SOCKET_URL);
@@ -110,6 +158,11 @@ function App() {
     socket.on('ticket-dismissed', ({ id }) => {
       setRequests((prev) => prev.filter(req => req.id !== id));
       fetchRequests();
+    });
+
+    socket.on('device-hardware-updated', ({ pcNumber, hardware }) => {
+      setDevices(prev => prev.map(d => d.pc_number === pcNumber ? { ...d, hardware_info: hardware } : d));
+      setSelectedHardwareDevice(prev => (prev && prev.pc_number === pcNumber ? { ...prev, hardware_info: hardware } : prev));
     });
 
     return () => {
@@ -383,104 +436,168 @@ function App() {
       <main className="content-stage">
         <div className="stage-inner">
 
-          {/* TAB 1: TICKETS */}
           {activeTab === 'tickets' && (
-            <>
-              <header className="title-area">
-                <h1 className="main-title">Live Support Dispatch</h1>
-                <p className="main-subtitle">Real-time incoming support tickets from authorized network PCs.</p>
+            <div className="dispatch-container">
+              <header className="dispatch-header">
+                <div className="dispatch-headline-group">
+                  <div className="dispatch-badge-row">
+                    <span className={`dispatch-counter-badge ${requests.length > 0 ? 'active-queue' : 'clear-queue'}`}>
+                      {requests.length > 0 ? `${requests.length} Active ${requests.length === 1 ? 'Request' : 'Requests'}` : 'All Workstations Nominal'}
+                    </span>
+                  </div>
+                  <h1 className="main-title">Live Support Dispatch</h1>
+                  <p className="main-subtitle">Incoming instant assistance requests from authorized workstations.</p>
+                </div>
               </header>
 
-              <div className={`board-panel ${requests.length > 0 ? 'emergency-board' : ''}`}>
-                <AnimatePresence>
+              <div className="dispatch-content-area">
+                <AnimatePresence mode="popLayout">
                   {requests.length === 0 ? (
                     <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="empty-board-content"
+                      key="empty-queue"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      className="dispatch-standby-card"
                     >
-                      <div className="empty-board-icon">
-                        <Inbox size={26} />
+                      <div className="standby-radar-wrapper">
+                        <div className="standby-pulse-ring ring-1"></div>
+                        <div className="standby-pulse-ring ring-2"></div>
+                        <div className="standby-center-core">
+                          <ShieldCheck size={32} />
+                        </div>
                       </div>
-                      <h2>Clear Support Queue</h2>
-                      <p>
-                        No active help requests pending at the moment.
-                        <br />
-                        When a verified workstation clicks "Request Help", it will immediately land here.
-                      </p>
+                      <div className="standby-copy-group">
+                        <span className="standby-status-label">Operational Standby</span>
+                        <h2>Dispatch Queue Clear</h2>
+                        <p>
+                          All networked computers are operating without open alerts.
+                          When an authorized user requests help, their ticket will instantly appear here with real-time diagnostics.
+                        </p>
+                      </div>
+                      <div className="standby-footer-specs">
+                        <span className="spec-item">
+                          <Activity size={13} /> Socket: Connected (Port 4000)
+                        </span>
+                        <span className="spec-divider">•</span>
+                        <span className="spec-item">
+                          <Monitor size={13} /> {devices.length} Authorized Devices Registered
+                        </span>
+                      </div>
                     </motion.div>
                   ) : (
-                    <div className="tickets-grid-flow">
-                      {requests.map((req) => (
-                        <motion.div
-                          key={req.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.98 }}
-                          className="ticket-flow-card"
-                        >
-                          <div className="flow-card-head">
-                            <div className="device-tag">
-                              <Monitor size={14} />
-                              <span>{req.pcNumber}</span>
-                            </div>
-                            <span className="flow-time">
-                              <Clock size={12} />
-                              {new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
+                    <div className="dispatch-cards-grid">
+                      {requests.map((req) => {
+                        const isCopied = copiedId === req.id;
 
-                          <div className="flow-card-body">
-                            <div className="flow-data-point">
-                              <User size={14} />
-                              <span className="flow-key">User</span>
-                              <span className="flow-val">{req.username}</span>
-                            </div>
-                            <div className="flow-data-point">
-                              <Building size={14} />
-                              <span className="flow-key">Dept</span>
-                              <span className="flow-val">{req.department}</span>
-                            </div>
-                            <div className="flow-data-point">
-                              <Server size={14} />
-                              <span className="flow-key">IP</span>
-                              <span className="flow-val">{req.ipAddress || '127.0.0.1'}</span>
-                            </div>
-                          </div>
+                        return (
+                          <motion.div
+                            key={req.id}
+                            layout
+                            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                            className="incident-card"
+                          >
+                            <div className="incident-card-topbar">
+                              <div className="incident-device-group">
+                                <div className="machine-code-pill">
+                                  <Monitor size={15} />
+                                  <span>{req.pcNumber}</span>
+                                </div>
+                                <span className="incident-dept-pill">
+                                  {req.department}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="incident-specs-btn"
+                                  onClick={() => openHardwareForRequest(req)}
+                                  title="View Workstation Hardware Diagnostics"
+                                >
+                                  <Cpu size={12} />
+                                  <span>Hardware</span>
+                                </button>
+                              </div>
 
-                          {req.message && (
-                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem', fontSize: '0.92rem', color: '#1e293b' }}>
-                              <strong style={{ display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.3rem' }}>User Message</strong>
-                              {req.message}
+                              <div className="incident-status-badges">
+                                <div
+                                  className="incident-timer-badge"
+                                  title={`Logged at ${new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
+                                >
+                                  <Clock size={13} />
+                                  <span>{getElapsedString(req.timestamp)}</span>
+                                  <span className="timer-hover-tooltip">
+                                    {new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          )}
 
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                            <button
-                              className="resolve-flat-btn"
-                              style={{ flex: 1 }}
-                              onClick={() => resolveRequest(req.id)}
-                            >
-                              <Check size={14} />
-                              <span>Resolve</span>
-                            </button>
-                            <button
-                              className="resolve-flat-btn"
-                              style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.25)', width: '42px' }}
-                              onClick={() => dismissRequest(req.id)}
-                              title="Dismiss request"
-                            >
-                              <XCircle size={15} />
-                            </button>
-                          </div>
-                        </motion.div>
-                      ))}
+                            <div className="incident-specs-matrix">
+                              <div className="spec-metric-cell">
+                                <span className="spec-caption">Requester</span>
+                                <div className="spec-value-row">
+                                  <div className="avatar-chip">
+                                    {(req.username || 'U').charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="spec-primary-text">{req.username}</span>
+                                </div>
+                              </div>
+
+                              <div className="spec-metric-cell">
+                                <span className="spec-caption">IP Address</span>
+                                <div className="spec-value-row">
+                                  <button
+                                    type="button"
+                                    className="spec-ip-pill"
+                                    onClick={() => handleCopyIp(req.ipAddress || '127.0.0.1', req.id)}
+                                    title="Click to copy IP"
+                                  >
+                                    <Server size={12} />
+                                    <span>{req.ipAddress || '127.0.0.1'}</span>
+                                    {isCopied ? <CheckCheck size={12} className="copied-icon" /> : <Copy size={11} className="copy-icon" />}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="incident-narrative-box">
+                              <div className="narrative-label">
+                                <MessageSquare size={13} />
+                                <span>Reported Issue</span>
+                              </div>
+                              <p className="narrative-body">
+                                {req.message ? req.message : <span className="empty-message-text">No custom message specified by user.</span>}
+                              </p>
+                            </div>
+
+                            <div className="incident-card-actions">
+                              <button
+                                type="button"
+                                className="action-resolve-btn"
+                                onClick={() => resolveRequest(req.id)}
+                              >
+                                <Check size={16} />
+                                <span>Mark Resolved</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="action-dismiss-btn"
+                                onClick={() => dismissRequest(req.id)}
+                                title="Dismiss and close this ticket"
+                              >
+                                <XCircle size={16} />
+                                <span>Dismiss</span>
+                              </button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
                 </AnimatePresence>
               </div>
-            </>
+            </div>
           )}
 
           {/* TAB 2: MODERN DEVICES DIRECTORY */}
@@ -582,26 +699,54 @@ function App() {
                       ) : (
                         filteredDevices.map(device => (
                           <tr key={device.id}>
-                            <td data-label="Workstation">{device.pc_number}</td>
-                            <td data-label="Department">{device.department || 'General'}</td>
+                            <td data-label="Workstation">
+                              <div className="workstation-info-group">
+                                <span className="workstation-code">{device.pc_number}</span>
+                                {device.hardware_info && (
+                                  <span className="hw-mini-badge" title="Hardware telemetry synced">
+                                    <Cpu size={10} />
+                                    <span>
+                                      {device.hardware_info.ram?.total_gb ? `${device.hardware_info.ram.total_gb}GB` : ''}
+                                      {device.hardware_info.gpu ? ` • ${device.hardware_info.gpu.split(',')[0].replace(/NVIDIA|GeForce|AMD|Radeon|Intel\(R\)/gi, '').trim()}` : ''}
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td data-label="Department">
+                              <span className="dept-tag">{device.department || 'General'}</span>
+                            </td>
                             <td data-label="Assigned user">{device.assigned_user || 'Unassigned'}</td>
-                              <td data-label="IP address" className="ip-text">{device.ip_address}</td>
-                            <td style={{ textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <td data-label="IP address">
+                              <span className="ip-text">{device.ip_address}</span>
+                            </td>
+                            <td className="actions-cell">
                               <button
-                                className="revoke"
-                                style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.3)' }}
+                                className="action-btn-specs"
+                                onClick={() => {
+                                  setSelectedHardwareDevice(device);
+                                  setIsHardwareModalOpen(true);
+                                }}
+                                title="View PC Hardware & Diagnostics"
+                              >
+                                <Cpu size={13} />
+                                <span>Hardware</span>
+                              </button>
+                              <button
+                                className="action-btn-edit"
                                 onClick={() => openEditModal(device)}
                                 title="Edit workstation"
                               >
+                                <Pencil size={13} />
                                 <span>Edit</span>
                               </button>
                               <button
-                                className="revoke"
+                                className="action-btn-revoke"
                                 onClick={() => handleDeleteDevice(device.id)}
                                 title="Revoke authorization"
                               >
+                                <Trash2 size={13} />
                                 <span>Revoke</span>
-                                <Trash2 className="icon" size={16} />
                               </button>
                             </td>
                           </tr>
@@ -849,21 +994,25 @@ function App() {
             </div>
           )}
 
-          {/* TAB 3: DEDICATED TICKET HISTORY */}
           {activeTab === 'history' && (
-            <>
-              <header className="title-area">
-                <h1 className="main-title">Historical Records</h1>
-                <p className="main-subtitle">Permanent audit log of all resolved and dismissed IT support tickets.</p>
+            <div className="history-section">
+              <header className="history-header">
+                <div>
+                  <h1 className="history-title">Historical Records</h1>
+                  <p className="history-subtitle">Permanent audit log of all resolved and dismissed IT support tickets.</p>
+                </div>
+                <div className="history-counter-badge">
+                  {resolvedTickets.length} {resolvedTickets.length === 1 ? 'Record' : 'Records'}
+                </div>
               </header>
 
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden' }}>
-                <table className="table-glass">
+              <div className="history-table-container">
+                <table className="history-table">
                   <thead>
                     <tr>
                       <th>Ticket ID</th>
                       <th>Workstation</th>
-                      <th>User</th>
+                      <th>Requester</th>
                       <th>IP Address</th>
                       <th>Opened At</th>
                       <th>Resolved At</th>
@@ -872,40 +1021,34 @@ function App() {
                   </thead>
                   <tbody>
                     {resolvedTickets.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                      <tr className="empty-history-row">
+                        <td colSpan="7">
                           No tickets have been resolved or closed yet.
                         </td>
                       </tr>
                     ) : (
                       resolvedTickets.map((ticket) => (
                         <tr key={ticket.id}>
-                          <td style={{ fontWeight: 700, color: '#60a5fa', fontFamily: 'monospace' }}>
-                            TKT-{String(ticket.id).padStart(4, '0')}
+                          <td>
+                            <span className="ticket-id-tag">
+                              TKT-{String(ticket.id).padStart(4, '0')}
+                            </span>
                           </td>
-                          <td style={{ fontWeight: 600, color: '#f8fafc' }}>{ticket.pcNumber}</td>
-                          <td style={{ color: 'var(--text-secondary)' }}>{ticket.username}</td>
-                          <td style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{ticket.ipAddress}</td>
-                          <td style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
-                            {new Date(ticket.timestamp).toLocaleString()}
+                          <td className="history-workstation">{ticket.pcNumber}</td>
+                          <td className="history-user">{ticket.username}</td>
+                          <td>
+                            <span className="history-ip-tag">{ticket.ipAddress}</span>
                           </td>
-                          <td style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
-                            {ticket.resolvedAt ? new Date(ticket.resolvedAt).toLocaleString() : '—'}
+                          <td className="history-time">
+                            {new Date(ticket.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                          </td>
+                          <td className="history-time">
+                            {ticket.resolvedAt ? new Date(ticket.resolvedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                           </td>
                           <td style={{ textAlign: 'right' }}>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '4px 8px',
-                              borderRadius: '9999px',
-                              fontSize: '0.72rem',
-                              fontWeight: 600,
-                              background: ticket.status === 'resolved' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.2)',
-                              color: ticket.status === 'resolved' ? '#34d399' : '#94a3b8'
-                            }}>
-                              {ticket.status === 'resolved' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                              {ticket.status === 'resolved' ? 'Resolved' : 'Dismissed'}
+                            <span className={`history-status-badge ${ticket.status === 'resolved' ? 'status-resolved' : 'status-dismissed'}`}>
+                              {ticket.status === 'resolved' ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
+                              <span>{ticket.status === 'resolved' ? 'Resolved' : 'Dismissed'}</span>
                             </span>
                           </td>
                         </tr>
@@ -914,7 +1057,7 @@ function App() {
                   </tbody>
                 </table>
               </div>
-            </>
+            </div>
           )}
 
           {/* TAB 4: BROADCASTS */}
@@ -987,6 +1130,173 @@ function App() {
               </div>
             </div>
           )}
+
+          <AnimatePresence>
+            {isHardwareModalOpen && selectedHardwareDevice && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="devices-modal-overlay"
+              >
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  className="devices-modal-content hw-modal-content"
+                >
+                  <button
+                    className="modal-close-btn"
+                    onClick={() => {
+                      setIsHardwareModalOpen(false);
+                      setSelectedHardwareDevice(null);
+                    }}
+                    title="Close"
+                  >
+                    <XCircle size={20} />
+                  </button>
+
+                  <div className="hw-modal-inner">
+                    <header className="hw-modal-header">
+                      <div className="hw-title-row">
+                        <span className="hw-pc-badge">
+                          <Monitor size={15} />
+                          {selectedHardwareDevice.pc_number}
+                        </span>
+                        <span className="dept-tag">
+                          {selectedHardwareDevice.department || 'General'}
+                        </span>
+                        {selectedHardwareDevice.hardware_info?.lastSeen && (
+                          <span className="hw-sync-pill">
+                            Telemetry Synced
+                          </span>
+                        )}
+                      </div>
+                      <h2>Workstation Hardware Diagnostics</h2>
+                      <p className="hw-subtitle">
+                        Comprehensive hardware telemetry reported by the client workstation agent.
+                      </p>
+                    </header>
+
+                    {!selectedHardwareDevice.hardware_info ? (
+                      <div className="hw-empty-state">
+                        <Cpu size={40} className="hw-empty-icon" />
+                        <h3>No Hardware Telemetry Reported Yet</h3>
+                        <p>
+                          The client agent on <strong>{selectedHardwareDevice.pc_number}</strong> ({selectedHardwareDevice.ip_address}) has not reported specifications to the server yet.
+                        </p>
+                        <span className="hw-empty-tip">
+                          Start the agent app on the workstation to synchronize hardware specs automatically.
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="hw-diagnostics-grid">
+                        <div className="hw-card">
+                          <div className="hw-card-head">
+                            <Cpu size={15} />
+                            <span>Processor (CPU)</span>
+                          </div>
+                          <div className="hw-metric-value">
+                            {selectedHardwareDevice.hardware_info.cpu?.model || 'Generic CPU'}
+                          </div>
+                          <div className="hw-metric-sub">
+                            <span>{selectedHardwareDevice.hardware_info.cpu?.cores || 1} Logical Cores</span>
+                            <span>•</span>
+                            <span>{selectedHardwareDevice.hardware_info.cpu?.architecture || 'x64'}</span>
+                          </div>
+                        </div>
+
+                        <div className="hw-card">
+                          <div className="hw-card-head">
+                            <Activity size={15} />
+                            <span>Memory (RAM)</span>
+                          </div>
+                          <div className="hw-metric-value">
+                            {selectedHardwareDevice.hardware_info.ram?.total_gb || 0} GB Physical Memory
+                          </div>
+                          <div className="hw-bar-wrapper">
+                            <div
+                              className="hw-bar-fill"
+                              style={{ width: `${selectedHardwareDevice.hardware_info.ram?.percent || 0}%` }}
+                            ></div>
+                          </div>
+                          <div className="hw-metric-sub">
+                            <span>{selectedHardwareDevice.hardware_info.ram?.used_gb || 0} GB In-Use ({selectedHardwareDevice.hardware_info.ram?.percent || 0}%)</span>
+                            <span>•</span>
+                            <span>{selectedHardwareDevice.hardware_info.ram?.free_gb || 0} GB Free</span>
+                          </div>
+                        </div>
+
+                        <div className="hw-card">
+                          <div className="hw-card-head">
+                            <Monitor size={15} />
+                            <span>Graphics Controller (GPU)</span>
+                          </div>
+                          <div className="hw-metric-value">
+                            {selectedHardwareDevice.hardware_info.gpu || 'Standard Video Adapter'}
+                          </div>
+                          <div className="hw-metric-sub">
+                            Active display output adapter
+                          </div>
+                        </div>
+
+                        <div className="hw-card">
+                          <div className="hw-card-head">
+                            <Server size={15} />
+                            <span>System & Motherboard</span>
+                          </div>
+                          <div className="hw-metric-value">
+                            {selectedHardwareDevice.hardware_info.system || 'Standard Workstation'}
+                          </div>
+                          <div className="hw-metric-sub">
+                            MAC: {selectedHardwareDevice.hardware_info.mac || 'N/A'}
+                          </div>
+                        </div>
+
+                        <div className="hw-card hw-card-full">
+                          <div className="hw-card-head">
+                            <HardDrive size={15} />
+                            <span>Storage Partitions</span>
+                          </div>
+                          <div className="hw-disks-list">
+                            {(selectedHardwareDevice.hardware_info.disks || []).map((disk, idx) => (
+                              <div key={idx} className="hw-disk-item">
+                                <div className="hw-disk-info">
+                                  <span className="hw-disk-mount">{disk.mount} Drive</span>
+                                  <span className="hw-disk-usage">{disk.used_gb} GB / {disk.total_gb} GB ({disk.percent}%)</span>
+                                </div>
+                                <div className="hw-bar-wrapper">
+                                  <div
+                                    className={`hw-bar-fill ${disk.percent > 90 ? 'critical-disk' : ''}`}
+                                    style={{ width: `${disk.percent}%` }}
+                                  ></div>
+                                </div>
+                                <span className="hw-disk-free">{disk.free_gb} GB Available</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="hw-card hw-card-full">
+                          <div className="hw-card-head">
+                            <ShieldCheck size={15} />
+                            <span>Operating System & Platform</span>
+                          </div>
+                          <div className="hw-metric-value">
+                            {selectedHardwareDevice.hardware_info.os || 'Windows OS'}
+                          </div>
+                          <div className="hw-metric-sub">
+                            Workstation IP: {selectedHardwareDevice.ip_address} • Assigned User: {selectedHardwareDevice.assigned_user || 'Unassigned'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
       </main>
